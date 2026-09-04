@@ -9,12 +9,14 @@ import { scoreProspect } from "@/lib/scoring/score-prospect";
 import { generateOutreachStrategy } from "@/lib/ai/generate-strategy";
 import { approveOutreachStrategy } from "@/lib/outreach/mutations";
 import { generateOutreachMessage } from "@/lib/ai/generate-message";
+import { generateReply } from "@/lib/ai/generate-reply";
 import {
   updateMessageContent,
   approveMessage,
   markMessageSent,
   deleteMessage,
 } from "@/lib/messages/mutations";
+import { closeConversation } from "@/lib/conversations/mutations";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/${prospectId}`;
@@ -163,5 +165,25 @@ export async function deleteMessageAction(
   messageId: string,
 ) {
   await deleteMessage(messageId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function generateReplyAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  conversationId: string,
+) {
+  await generateReply(conversationId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function closeConversationAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  conversationId: string,
+) {
+  await closeConversation(conversationId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }
