@@ -99,3 +99,18 @@ export const OutreachStrategySchema = z.object({
 });
 
 export type OutreachStrategyDraft = z.infer<typeof OutreachStrategySchema>;
+
+/**
+ * Structured outreach message output (blueprint §19, §36, §39). Generated from an
+ * *approved* strategy, never directly from "write an email" -- see
+ * prompts/outreach/generate_message_v1.ts.
+ */
+export const OutreachMessageSchema = z.object({
+  subject: z
+    .string()
+    .nullable()
+    .describe("Email subject line; null for linkedin/whatsapp (no subject line)"),
+  body: z.string(),
+});
+
+export type OutreachMessageDraft = z.infer<typeof OutreachMessageSchema>;

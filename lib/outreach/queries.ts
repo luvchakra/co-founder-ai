@@ -15,3 +15,14 @@ export async function getLatestOutreachStrategy(
   if (error) throw error;
   return data;
 }
+
+export async function getOutreachStrategy(strategyId: string): Promise<OutreachStrategy | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("outreach_strategies")
+    .select("*")
+    .eq("id", strategyId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

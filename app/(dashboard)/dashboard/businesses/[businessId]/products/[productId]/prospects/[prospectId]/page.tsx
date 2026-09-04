@@ -6,9 +6,11 @@ import { listContacts } from "@/lib/contacts/queries";
 import { getProspectResearch } from "@/lib/research/queries";
 import { getProspectScore } from "@/lib/scoring/queries";
 import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
+import { listMessages } from "@/lib/messages/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   updateProspectAction,
   updateProspectStatusAction,
@@ -18,6 +20,11 @@ import {
   scoreProspectAction,
   generateStrategyAction,
   approveStrategyAction,
+  generateMessageAction,
+  updateMessageContentAction,
+  approveMessageAction,
+  markMessageSentAction,
+  deleteMessageAction,
 } from "./actions";
 
 const CONFIDENCE_LABEL: Record<string, string> = {
@@ -28,6 +35,12 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 };
 
 const STATUS_OPTIONS = ["new", "qualified", "disqualified"] as const;
+
+const MESSAGE_STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  approved: "Approved",
+  sent: "Sent",
+};
 
 export default async function ProspectDetailPage({
   params,
@@ -44,11 +57,12 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const [contacts, research, score, strategy] = await Promise.all([
+  const [contacts, research, score, strategy, messages] = await Promise.all([
     listContacts(prospect.id),
     getProspectResearch(prospect.id),
     getProspectScore(prospect.id),
     getLatestOutreachStrategy(prospect.id),
+    listMessages(prospect.id),
   ]);
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
@@ -308,6 +322,119 @@ export default async function ProspectDetailPage({
               </form>
             ) : null}
           </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-md border p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Messages</h2>
+          {strategy?.status === "approved" ? (
+            <form
+              action={generateMessageAction.bind(
+                null,
+                businessId,
+                productId,
+                prospect.id,
+                strategy.id,
+              )}
+            >
+              <Button type="submit" size="sm">
+                Generate message
+              </Button>
+            </form>
+          ) : null}
+        </div>
+
+        {strategy?.status !== "approved" ? (
+          <p className="text-sm text-muted-foreground">Approve an outreach strategy first.</p>
+        ) : messages.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No messages yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {messages.map((m) => (
+              <li key={m.id} className="flex flex-col gap-2 rounded-md border p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                    {m.channel} · {MESSAGE_STATUS_LABEL[m.status] ?? m.status}
+                  </span>
+                  <form
+                    action={deleteMessageAction.bind(
+                      null,
+                      businessId,
+                      productId,
+                      prospect.id,
+                      m.id,
+                    )}
+                  >
+                    <Button variant="ghost" size="sm" type="submit">
+                      Delete
+                    </Button>
+                  </form>
+                </div>
+
+                <form
+                  action={updateMessageContentAction.bind(
+                    null,
+                    businessId,
+                    productId,
+                    prospect.id,
+                    m.id,
+                  )}
+                  className="flex flex-col gap-2"
+                >
+                  <Textarea
+                    name="content"
+                    defaultValue={m.content}
+                    rows={5}
+                    disabled={m.status === "sent"}
+                  />
+                  {m.status !== "sent" ? (
+                    <Button type="submit" size="sm" variant="outline" className="self-start">
+                      Save edits
+                    </Button>
+                  ) : null}
+                </form>
+
+                <div className="flex items-center gap-2">
+                  {m.status === "draft" ? (
+                    <form
+                      action={approveMessageAction.bind(
+                        null,
+                        businessId,
+                        productId,
+                        prospect.id,
+                        m.id,
+                      )}
+                    >
+                      <Button type="submit" size="sm">
+                        Approve
+                      </Button>
+                    </form>
+                  ) : null}
+                  {m.status === "approved" ? (
+                    <form
+                      action={markMessageSentAction.bind(
+                        null,
+                        businessId,
+                        productId,
+                        prospect.id,
+                        m.id,
+                      )}
+                    >
+                      <Button type="submit" size="sm">
+                        Mark sent
+                      </Button>
+                    </form>
+                  ) : null}
+                  {m.status === "sent" && m.sent_at ? (
+                    <span className="text-xs text-muted-foreground">
+                      Sent {new Date(m.sent_at).toLocaleString()}
+                    </span>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

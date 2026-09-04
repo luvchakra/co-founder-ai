@@ -8,6 +8,13 @@ import { researchProspect } from "@/lib/ai/research-prospect";
 import { scoreProspect } from "@/lib/scoring/score-prospect";
 import { generateOutreachStrategy } from "@/lib/ai/generate-strategy";
 import { approveOutreachStrategy } from "@/lib/outreach/mutations";
+import { generateOutreachMessage } from "@/lib/ai/generate-message";
+import {
+  updateMessageContent,
+  approveMessage,
+  markMessageSent,
+  deleteMessage,
+} from "@/lib/messages/mutations";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/${prospectId}`;
@@ -105,5 +112,56 @@ export async function approveStrategyAction(
   strategyId: string,
 ) {
   await approveOutreachStrategy(strategyId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function generateMessageAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  strategyId: string,
+) {
+  await generateOutreachMessage(strategyId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function updateMessageContentAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+  formData: FormData,
+) {
+  await updateMessageContent(messageId, String(formData.get("content") ?? ""));
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function approveMessageAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+) {
+  await approveMessage(messageId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function markMessageSentAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+) {
+  await markMessageSent(messageId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function deleteMessageAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+) {
+  await deleteMessage(messageId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }
