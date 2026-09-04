@@ -9,12 +9,16 @@ export function ProductNav({ basePath }: { basePath: string }) {
   const tabs = [
     { href: basePath, label: "Overview" },
     { href: `${basePath}/icp`, label: "ICP" },
+    { href: `${basePath}/prospects`, label: "Prospects" },
   ];
 
   return (
     <nav className="flex gap-4 border-b text-sm">
       {tabs.map((tab) => {
-        const active = pathname === tab.href;
+        const active =
+          tab.href === basePath
+            ? pathname === basePath
+            : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
         return (
           <Link
             key={tab.href}
