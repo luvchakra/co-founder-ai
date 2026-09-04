@@ -1,3 +1,5 @@
+import type { ProductProfile } from "@/lib/ai/schemas";
+
 export type Account = {
   id: string;
   name: string;
@@ -25,6 +27,8 @@ export type Product = {
   description: string | null;
   website: string | null;
   status: "active" | "archived";
+  product_profile: ProductProfile | null;
+  product_profile_generated_at: string | null;
   created_at: string;
   updated_at: string;
 };
