@@ -9,6 +9,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ReplyClassificationSchema } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "classify_reply";
 
@@ -45,6 +46,8 @@ export async function classifyReply(messageId: string): Promise<Message> {
     .eq("id", workspace.product_id)
     .single();
   if (productError) throw productError;
+
+  await assertWithinUsageLimit(workspace.id, admin);
 
   const prompt = classifyReplyPrompt({ productName: product.name, replyContent: message.content });
   const inputHash = hashInput({ prompt, version: CLASSIFY_REPLY_PROMPT_VERSION });

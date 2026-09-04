@@ -15,6 +15,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { OutreachStrategySchema } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "generate_outreach_strategy";
 
@@ -51,6 +52,8 @@ export async function generateOutreachStrategy(
   }
 
   const score = await getProspectScore(prospectId);
+
+  await assertWithinUsageLimit(workspace.id);
 
   const supabase = await createClient();
   let contact: Contact | null = null;

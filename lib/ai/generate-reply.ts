@@ -13,6 +13,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { OutreachMessageSchema } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "generate_reply";
 
@@ -50,6 +51,8 @@ export async function generateReply(conversationId: string): Promise<Message> {
 
   const product = await getProduct(workspace.product_id);
   if (!product?.product_profile) throw new Error("Product profile not found.");
+
+  await assertWithinUsageLimit(workspace.id);
 
   let contact: Contact | null = null;
   if (conversation.contact_id) {

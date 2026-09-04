@@ -10,6 +10,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ProductProfileSchema, type ProductProfile } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "understand_product";
 
@@ -49,6 +50,8 @@ export async function understandProduct(
   ) {
     return product.product_profile;
   }
+
+  await assertWithinUsageLimit(workspace.id);
 
   const prompt = understandProductPrompt({
     productName: product.name,

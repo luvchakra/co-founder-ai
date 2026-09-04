@@ -13,6 +13,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ProspectResearchSchema } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "research_prospect";
 const RESEARCH_TTL_DAYS = 30;
@@ -38,6 +39,8 @@ export async function researchProspect(prospectId: string): Promise<ProspectRese
 
   const product = await getProduct(workspace.product_id);
   if (!product) throw new Error("Product not found.");
+
+  await assertWithinUsageLimit(workspace.id);
 
   const icp = await getIcpProfile(workspace.id);
 

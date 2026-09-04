@@ -11,6 +11,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { IcpProfileSchema, type IcpProfileDraft } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "generate_icp";
 
@@ -37,6 +38,8 @@ export async function generateIcp(
   if (existing && existing.status === "approved" && !options.force) {
     return existing;
   }
+
+  await assertWithinUsageLimit(workspace.id);
 
   const prompt = generateIcpPrompt({
     productName: product.name,

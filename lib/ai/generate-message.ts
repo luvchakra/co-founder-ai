@@ -13,6 +13,7 @@ import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { OutreachMessageSchema } from "./schemas";
 import { recordAiRun } from "./usage";
+import { assertWithinUsageLimit } from "@/lib/usage/limits";
 
 const OPERATION = "generate_outreach_message";
 
@@ -37,6 +38,8 @@ export async function generateOutreachMessage(strategyId: string): Promise<Messa
 
   const product = await getProduct(workspace.product_id);
   if (!product?.product_profile) throw new Error("Product profile not found.");
+
+  await assertWithinUsageLimit(workspace.id);
 
   const supabase = await createClient();
   let contact: Contact | null = null;
