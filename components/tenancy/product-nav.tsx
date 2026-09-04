@@ -10,6 +10,7 @@ export function ProductNav({ basePath }: { basePath: string }) {
     { href: basePath, label: "Overview" },
     { href: `${basePath}/icp`, label: "ICP" },
     { href: `${basePath}/prospects`, label: "Prospects" },
+    { href: `${basePath}/usage`, label: "Usage" },
   ];
 
   return (
