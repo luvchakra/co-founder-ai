@@ -7,6 +7,7 @@ export type Message = {
   workspace_id: string;
   prospect_id: string;
   contact_id: string | null;
+  conversation_id: string | null;
   channel: MessageChannel;
   direction: MessageDirection;
   content: string;
