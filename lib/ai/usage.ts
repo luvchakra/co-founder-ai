@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { estimateCost } from "./client";
 
@@ -5,6 +6,10 @@ import { estimateCost } from "./client";
  * ai_runs is an append-only usage/cost ledger (blueprint §9, §11) -- it does not store
  * results, only what an operation cost. Never let a logging failure break the caller's
  * actual result.
+ *
+ * Defaults to the RLS-scoped server client. Pass `client` (e.g. the admin client) for
+ * operations with no logged-in user, such as the inbound-webhook-triggered reply
+ * classification in lib/ai/classify-reply.ts.
  */
 export async function recordAiRun(input: {
   workspaceId: string;
@@ -15,8 +20,9 @@ export async function recordAiRun(input: {
   inputTokens?: number;
   outputTokens?: number;
   status: "succeeded" | "failed";
+  client?: SupabaseClient;
 }) {
-  const supabase = await createClient();
+  const supabase = input.client ?? (await createClient());
   const estimatedCost =
     input.inputTokens != null && input.outputTokens != null
       ? estimateCost(input.model, input.inputTokens, input.outputTokens)

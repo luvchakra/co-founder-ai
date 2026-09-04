@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { classifyReply } from "@/lib/ai/classify-reply";
 import type { Message } from "@/lib/messages/types";
 
 export type InboundEmailPayload = {
@@ -91,5 +92,14 @@ export async function ingestInboundEmail(payload: InboundEmailPayload): Promise<
     .eq("id", conversation.id);
   if (updateError) throw updateError;
 
-  return { matched: true, message };
+  // Best-effort -- an ingested reply is worth keeping even if classification fails (rate
+  // limit, model error). The founder can still read it, just without the AI's suggested
+  // next step.
+  try {
+    const classified = await classifyReply(message.id);
+    return { matched: true, message: classified };
+  } catch (error) {
+    console.error("Failed to classify inbound reply:", error);
+    return { matched: true, message };
+  }
 }

@@ -114,3 +114,24 @@ export const OutreachMessageSchema = z.object({
 });
 
 export type OutreachMessageDraft = z.infer<typeof OutreachMessageSchema>;
+
+/**
+ * Reply classification output (blueprint §21, Epic 9). Produced from an inbound message's
+ * content -- see prompts/outreach/classify_reply_v1.ts.
+ */
+export const ReplyClassificationSchema = z.object({
+  classification: z.enum([
+    "interested",
+    "not_interested",
+    "question",
+    "objection",
+    "out_of_office",
+    "unsubscribe",
+    "other",
+  ]),
+  recommended_action: z
+    .string()
+    .describe("One short, concrete next step for the founder, e.g. 'Send pricing and offer a demo'"),
+});
+
+export type ReplyClassificationDraft = z.infer<typeof ReplyClassificationSchema>;
