@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { updateProspect, updateProspectStatus } from "@/lib/prospects/mutations";
 import type { ProspectStatus } from "@/lib/prospects/types";
 import { createContact, deleteContact } from "@/lib/contacts/mutations";
+import { researchProspect } from "@/lib/ai/research-prospect";
+import { scoreProspect } from "@/lib/scoring/score-prospect";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/${prospectId}`;
@@ -62,5 +64,23 @@ export async function deleteContactAction(
   contactId: string,
 ) {
   await deleteContact(contactId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function researchProspectAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+) {
+  await researchProspect(prospectId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function scoreProspectAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+) {
+  await scoreProspect(prospectId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }

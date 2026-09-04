@@ -53,3 +53,29 @@ export const IcpProfileSchema = z.object({
 });
 
 export type IcpProfileDraft = z.infer<typeof IcpProfileSchema>;
+
+/**
+ * Evidence model (blueprint §33): every claim distinguishes FACT / INFERENCE / ASSUMPTION
+ * / UNKNOWN rather than being asserted flatly. Used by prospect research.
+ */
+export const EvidenceItemSchema = z.object({
+  claim: z.string(),
+  source_url: z.string().nullable().describe("URL where this was found, or null"),
+  confidence: z.enum(["fact", "inference", "assumption", "unknown"]),
+});
+
+/**
+ * Structured prospect research output (blueprint §16, §32-34). Produced by structuring
+ * raw web-search findings -- see prompts/research/research_prospect_v1.ts. The model must
+ * not invent evidence; empty arrays / "not found" are valid answers.
+ */
+export const ProspectResearchSchema = z.object({
+  summary: z.string(),
+  pain_points: z.array(z.string()),
+  buying_signals: z.array(z.string()),
+  recent_events: z.array(z.string()),
+  recommended_angle: z.string(),
+  evidence: z.array(EvidenceItemSchema),
+});
+
+export type ProspectResearchDraft = z.infer<typeof ProspectResearchSchema>;

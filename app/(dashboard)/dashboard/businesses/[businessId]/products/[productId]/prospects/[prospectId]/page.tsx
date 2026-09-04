@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getProspect } from "@/lib/prospects/queries";
 import { listContacts } from "@/lib/contacts/queries";
+import { getProspectResearch } from "@/lib/research/queries";
+import { getProspectScore } from "@/lib/scoring/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +13,16 @@ import {
   updateProspectStatusAction,
   addContactAction,
   deleteContactAction,
+  researchProspectAction,
+  scoreProspectAction,
 } from "./actions";
+
+const CONFIDENCE_LABEL: Record<string, string> = {
+  fact: "Fact",
+  inference: "Inference",
+  assumption: "Assumption",
+  unknown: "Unknown",
+};
 
 const STATUS_OPTIONS = ["new", "qualified", "disqualified"] as const;
 
@@ -30,7 +41,11 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const contacts = await listContacts(prospect.id);
+  const [contacts, research, score] = await Promise.all([
+    listContacts(prospect.id),
+    getProspectResearch(prospect.id),
+    getProspectScore(prospect.id),
+  ]);
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
   return (
@@ -113,6 +128,109 @@ export default async function ProspectDetailPage({
             Save changes
           </Button>
         </form>
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-md border p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Research</h2>
+          <form action={researchProspectAction.bind(null, businessId, productId, prospect.id)}>
+            <Button type="submit" size="sm">
+              {research ? "Re-research" : "Research"}
+            </Button>
+          </form>
+        </div>
+
+        {!research ? (
+          <p className="text-sm text-muted-foreground">
+            Not researched yet. Uses web search -- may take a moment.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3 text-sm">
+            <p>{research.summary}</p>
+            {research.pain_points.length > 0 ? (
+              <div>
+                <p className="font-medium">Pain points</p>
+                <p className="text-muted-foreground">{research.pain_points.join(", ")}</p>
+              </div>
+            ) : null}
+            {research.buying_signals.length > 0 ? (
+              <div>
+                <p className="font-medium">Buying signals</p>
+                <p className="text-muted-foreground">{research.buying_signals.join(", ")}</p>
+              </div>
+            ) : null}
+            {research.recent_events.length > 0 ? (
+              <div>
+                <p className="font-medium">Recent events</p>
+                <p className="text-muted-foreground">{research.recent_events.join(", ")}</p>
+              </div>
+            ) : null}
+            {research.recommended_angle ? (
+              <div>
+                <p className="font-medium">Recommended angle</p>
+                <p className="text-muted-foreground">{research.recommended_angle}</p>
+              </div>
+            ) : null}
+            {research.evidence.length > 0 ? (
+              <div>
+                <p className="font-medium">Evidence</p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {research.evidence.map((item, i) => (
+                    <li key={i} className="text-muted-foreground">
+                      <span className="rounded bg-muted px-1 text-xs">
+                        {CONFIDENCE_LABEL[item.confidence] ?? item.confidence}
+                      </span>{" "}
+                      {item.claim}
+                      {item.source_url ? (
+                        <>
+                          {" — "}
+                          <a
+                            href={item.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline underline-offset-4"
+                          >
+                            source
+                          </a>
+                        </>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-md border p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Score</h2>
+          <form action={scoreProspectAction.bind(null, businessId, productId, prospect.id)}>
+            <Button type="submit" size="sm">
+              {score ? "Rescore" : "Score"}
+            </Button>
+          </form>
+        </div>
+
+        {!score ? (
+          <p className="text-sm text-muted-foreground">
+            Not scored yet. Requires an approved ICP.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="text-2xl font-semibold">{score.overall_score}</p>
+            <p className="text-muted-foreground">
+              ICP fit {score.icp_score} · Intent {score.intent_score} · Timing{" "}
+              {score.timing_score}
+            </p>
+            {score.reasoning ? (
+              <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
+                {score.reasoning}
+              </pre>
+            ) : null}
+          </div>
+        )}
       </section>
 
       <section className="flex flex-col gap-4">
