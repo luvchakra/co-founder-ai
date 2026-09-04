@@ -58,9 +58,12 @@ shape as the app grows:
 
 ```
 app/            route handlers + pages (App Router)
+proxy.ts        root-level request middleware (Next.js 16 renamed middleware.ts ->
+                proxy.ts; exported function is `proxy`, not `middleware`)
 components/ui/  shadcn/ui primitives (hand-vendored)
 components/     feature components, grouped by domain
-lib/supabase/   client.ts (browser), server.ts (server components/actions)
+lib/supabase/   client.ts (browser), server.ts (server components/actions), admin.ts
+                (service-role, server-only), middleware.ts (session refresh helper)
 lib/ai/         client.ts, prompts.ts, schemas.ts
 lib/research/   search.ts, company.ts, signals.ts
 lib/<domain>/   prospects, outreach, conversations, scoring, usage
