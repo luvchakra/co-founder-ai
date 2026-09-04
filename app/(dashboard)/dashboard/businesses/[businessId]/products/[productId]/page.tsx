@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
-import { getProduct, getWorkspaceForProduct, listProducts } from "@/lib/tenancy/queries";
+import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProductKnowledge } from "@/lib/knowledge/queries";
-import { ProductSwitcher } from "@/components/tenancy/product-switcher";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,34 +25,18 @@ export default async function ProductPage({
   const product = await getProduct(productId);
   if (!product || product.business_id !== businessId) notFound();
 
-  const [workspace, products] = await Promise.all([
-    getWorkspaceForProduct(product.id),
-    listProducts(businessId),
-  ]);
+  const workspace = await getWorkspaceForProduct(product.id);
   if (!workspace) notFound();
 
   const sources = await listProductKnowledge(workspace.id);
   const profile = product.product_profile;
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">{product.name}</h1>
-        {products.length > 1 ? (
-          <ProductSwitcher
-            businessId={businessId}
-            products={products}
-            currentProductId={product.id}
-          />
-        ) : null}
-      </div>
-
+    <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Product profile</h2>
-          <form
-            action={generateProductProfileAction.bind(null, businessId, productId)}
-          >
+          <form action={generateProductProfileAction.bind(null, businessId, productId)}>
             {profile ? <input type="hidden" name="force" value="true" /> : null}
             <Button type="submit" size="sm" disabled={sources.length === 0}>
               {profile ? "Regenerate" : "Generate profile"}
@@ -207,6 +190,6 @@ export default async function ProductPage({
           </form>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

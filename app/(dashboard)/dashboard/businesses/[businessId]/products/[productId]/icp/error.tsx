@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 
-export default function ProductError({
+export default function IcpError({
   error,
   reset,
 }: {

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { createClient } from "@/lib/supabase/server";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
@@ -8,14 +7,11 @@ import {
   UNDERSTAND_PRODUCT_PROMPT_VERSION,
 } from "@/prompts/product/understand_product_v1";
 import { anthropic, AI_MODELS } from "./client";
+import { hashInput } from "./hash";
 import { ProductProfileSchema, type ProductProfile } from "./schemas";
 import { recordAiRun } from "./usage";
 
 const OPERATION = "understand_product";
-
-function hashInput(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
-}
 
 /**
  * Synthesizes a structured ProductProfile from the workspace's product_knowledge sources.

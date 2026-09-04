@@ -31,3 +31,25 @@ export const ProductProfileSchema = z.object({
 });
 
 export type ProductProfile = z.infer<typeof ProductProfileSchema>;
+
+/**
+ * Structured ICP draft output (blueprint §13, §19). Generated from a ProductProfile --
+ * see prompts/icp/generate_icp_v1.ts.
+ */
+export const IcpProfileSchema = z.object({
+  name: z.string().describe("A short label for this ICP, e.g. 'Enterprise Banks'"),
+  description: z.string(),
+  industries: z.array(z.string()),
+  company_sizes: z
+    .array(z.string())
+    .describe("e.g. '50-200 employees', '2,000-50,000 employees'"),
+  geographies: z.array(z.string()),
+  roles: z.array(z.string()).describe("Job titles/roles of likely buyers"),
+  pain_points: z.array(z.string()),
+  buying_signals: z.array(z.string()),
+  exclusions: z
+    .array(z.string())
+    .describe("Company types that look similar but are NOT a good fit, and why"),
+});
+
+export type IcpProfileDraft = z.infer<typeof IcpProfileSchema>;
