@@ -6,6 +6,8 @@ import type { ProspectStatus } from "@/lib/prospects/types";
 import { createContact, deleteContact } from "@/lib/contacts/mutations";
 import { researchProspect } from "@/lib/ai/research-prospect";
 import { scoreProspect } from "@/lib/scoring/score-prospect";
+import { generateOutreachStrategy } from "@/lib/ai/generate-strategy";
+import { approveOutreachStrategy } from "@/lib/outreach/mutations";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/${prospectId}`;
@@ -82,5 +84,26 @@ export async function scoreProspectAction(
   prospectId: string,
 ) {
   await scoreProspect(prospectId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function generateStrategyAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  formData: FormData,
+) {
+  const contactId = String(formData.get("contactId") ?? "") || null;
+  await generateOutreachStrategy(prospectId, contactId);
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function approveStrategyAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  strategyId: string,
+) {
+  await approveOutreachStrategy(strategyId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }

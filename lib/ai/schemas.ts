@@ -79,3 +79,23 @@ export const ProspectResearchSchema = z.object({
 });
 
 export type ProspectResearchDraft = z.infer<typeof ProspectResearchSchema>;
+
+/**
+ * Structured outreach strategy output (blueprint §18, §35). "Do not immediately ask
+ * 'write an email' -- first establish WHY THIS COMPANY, WHY THIS PERSON, WHY NOW, WHAT
+ * ANGLE, WHAT CHANNEL, WHAT CTA." `strategy` is the synthesized why-narrative;
+ * `key_message` and `cta` are what actually gets used when Epic 8 generates the message.
+ */
+export const OutreachStrategySchema = z.object({
+  strategy: z
+    .string()
+    .describe(
+      "The strategic narrative: why this company, why this person (if known), why now -- tied to specific research evidence, not generic",
+    ),
+  channel: z.enum(["email", "linkedin", "whatsapp"]),
+  reason: z.string().describe("One-line rationale for approaching this prospect now"),
+  key_message: z.string().describe("The core angle/message to lead with"),
+  cta: z.string().describe("The specific call to action"),
+});
+
+export type OutreachStrategyDraft = z.infer<typeof OutreachStrategySchema>;

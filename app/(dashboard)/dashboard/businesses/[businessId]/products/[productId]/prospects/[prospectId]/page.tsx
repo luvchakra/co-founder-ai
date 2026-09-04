@@ -5,6 +5,7 @@ import { getProspect } from "@/lib/prospects/queries";
 import { listContacts } from "@/lib/contacts/queries";
 import { getProspectResearch } from "@/lib/research/queries";
 import { getProspectScore } from "@/lib/scoring/queries";
+import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,8 @@ import {
   deleteContactAction,
   researchProspectAction,
   scoreProspectAction,
+  generateStrategyAction,
+  approveStrategyAction,
 } from "./actions";
 
 const CONFIDENCE_LABEL: Record<string, string> = {
@@ -41,10 +44,11 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const [contacts, research, score] = await Promise.all([
+  const [contacts, research, score, strategy] = await Promise.all([
     listContacts(prospect.id),
     getProspectResearch(prospect.id),
     getProspectScore(prospect.id),
+    getLatestOutreachStrategy(prospect.id),
   ]);
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
@@ -228,6 +232,80 @@ export default async function ProspectDetailPage({
               <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
                 {score.reasoning}
               </pre>
+            ) : null}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-md border p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">Outreach strategy</h2>
+          {strategy?.status === "approved" ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Approved
+            </span>
+          ) : null}
+        </div>
+
+        <form
+          action={generateStrategyAction.bind(null, businessId, productId, prospect.id)}
+          className="flex items-center gap-2"
+        >
+          {contacts.length > 0 ? (
+            <select
+              name="contactId"
+              defaultValue=""
+              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
+            >
+              <option value="">No specific contact</option>
+              {contacts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.id}
+                </option>
+              ))}
+            </select>
+          ) : null}
+          <Button type="submit" size="sm" disabled={!research}>
+            {strategy ? "Generate new strategy" : "Generate strategy"}
+          </Button>
+        </form>
+
+        {!research ? (
+          <p className="text-sm text-muted-foreground">Research this prospect first.</p>
+        ) : !strategy ? (
+          <p className="text-sm text-muted-foreground">No strategy yet.</p>
+        ) : (
+          <div className="flex flex-col gap-3 text-sm">
+            <div>
+              <p className="font-medium">Why / strategy</p>
+              <p className="text-muted-foreground">{strategy.strategy}</p>
+            </div>
+            <div>
+              <p className="font-medium">Channel</p>
+              <p className="text-muted-foreground">{strategy.channel}</p>
+            </div>
+            <div>
+              <p className="font-medium">Key message</p>
+              <p className="text-muted-foreground">{strategy.key_message}</p>
+            </div>
+            <div>
+              <p className="font-medium">Call to action</p>
+              <p className="text-muted-foreground">{strategy.cta}</p>
+            </div>
+            {strategy.status === "draft" ? (
+              <form
+                action={approveStrategyAction.bind(
+                  null,
+                  businessId,
+                  productId,
+                  prospect.id,
+                  strategy.id,
+                )}
+              >
+                <Button type="submit" size="sm" variant="outline">
+                  Approve strategy
+                </Button>
+              </form>
             ) : null}
           </div>
         )}
