@@ -25,10 +25,12 @@ export default async function ProspectsPage({
     sort?: string;
     imported?: string;
     skipped?: string;
+    duplicates?: string;
   }>;
 }) {
   const { businessId, productId } = await params;
-  const { status, industry, search, stage, sort, imported, skipped } = await searchParams;
+  const { status, industry, search, stage, sort, imported, skipped, duplicates } =
+    await searchParams;
 
   const product = await getProduct(productId);
   if (!product || product.business_id !== businessId) notFound();
@@ -60,6 +62,9 @@ export default async function ProspectsPage({
         <p className="rounded-md border bg-muted p-3 text-sm">
           Imported {imported} prospect{imported === "1" ? "" : "s"}.
           {skipped && skipped !== "0" ? ` Skipped ${skipped} row(s) missing a name.` : ""}
+          {duplicates && duplicates !== "0"
+            ? ` Skipped ${duplicates} row(s) already in your pipeline.`
+            : ""}
         </p>
       ) : null}
       <form method="get" className="flex flex-wrap items-end gap-3">

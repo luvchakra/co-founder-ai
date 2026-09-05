@@ -216,10 +216,13 @@ function OutboundMessageCard({
 
 export default async function ProspectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ businessId: string; productId: string; prospectId: string }>;
+  searchParams: Promise<{ duplicate?: string }>;
 }) {
   const { businessId, productId, prospectId } = await params;
+  const { duplicate } = await searchParams;
   const product = await getProduct(productId);
   if (!product || product.business_id !== businessId) notFound();
 
@@ -274,6 +277,12 @@ export default async function ProspectDetailPage({
       <Link href={basePath} className="text-sm text-muted-foreground hover:underline">
         ← Back to prospects
       </Link>
+
+      {duplicate ? (
+        <p className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+          This company was already in your pipeline -- nothing new was created.
+        </p>
+      ) : null}
 
       <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
         <div>

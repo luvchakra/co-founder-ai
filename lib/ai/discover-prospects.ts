@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
 import { listProspects } from "@/lib/prospects/queries";
+import { findDuplicateProspect } from "@/lib/prospects/duplicates";
 import type { ProspectSuggestion } from "@/lib/prospects/types";
 import {
   discoverProspectsPrompt,
@@ -94,10 +95,19 @@ export async function discoverProspects(workspaceId: string): Promise<ProspectSu
         prompt: structureDiscoveryPrompt(findings),
       });
 
-      const knownLower = new Set(knownCompanies.map((c) => c.toLowerCase()));
-      const candidates = structureResponse.object.prospects
-        .filter((c) => !knownLower.has(c.company_name.toLowerCase()))
-        .slice(0, 10);
+      // The known-companies list above is a soft signal to the model (prompt-level);
+      // this is the actual enforcement, via the same shared check manual add and CSV
+      // import use (docs/prospects-pipeline-redesign-requirements.md R9) -- domain
+      // first, name second -- rather than the exact-name-only match this used to do.
+      const candidates: typeof structureResponse.object.prospects = [];
+      for (const candidate of structureResponse.object.prospects) {
+        if (candidates.length >= 10) break;
+        const duplicate = await findDuplicateProspect(workspaceId, {
+          companyName: candidate.company_name,
+          website: candidate.website,
+        });
+        if (!duplicate) candidates.push(candidate);
+      }
 
       await recordAiRun({
         workspaceId,
