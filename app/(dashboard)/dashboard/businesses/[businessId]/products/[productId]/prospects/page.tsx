@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { createProspectAction, bulkResearchAction, bulkScoreAction } from "./actions";
 
 const STATUS_OPTIONS: ProspectStatus[] = ["new", "qualified", "disqualified"];
@@ -107,66 +108,46 @@ export default async function ProspectsPage({
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="status">Status</Label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={status ?? ""}
-            className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-          >
+          <Select id="status" name="status" defaultValue={status ?? ""}>
             <option value="">Any</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="stage">Stage</Label>
-          <select
-            id="stage"
-            name="stage"
-            defaultValue={stage ?? ""}
-            className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-          >
+          <Select id="stage" name="stage" defaultValue={stage ?? ""}>
             <option value="">Any</option>
             {PROSPECT_STAGES.map((s) => (
               <option key={s} value={s}>
                 {PROSPECT_STAGE_LABEL[s]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         {industries.length > 0 ? (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="industry">Industry</Label>
-            <select
-              id="industry"
-              name="industry"
-              defaultValue={industry ?? ""}
-              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
+            <Select id="industry" name="industry" defaultValue={industry ?? ""}>
               <option value="">Any</option>
               {industries.map((i) => (
                 <option key={i} value={i}>
                   {i}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         ) : null}
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="sort">Sort</Label>
-          <select
-            id="sort"
-            name="sort"
-            defaultValue={sortMode}
-            className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-          >
+          <Select id="sort" name="sort" defaultValue={sortMode}>
             <option value="recent">Most recent</option>
             <option value="stage">Pipeline stage</option>
             <option value="priority">Priority (highest fit, needs action)</option>
-          </select>
+          </Select>
         </div>
         <Button type="submit" size="sm" variant="outline">
           Filter

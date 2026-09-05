@@ -43,7 +43,7 @@ export function BusinessSelector({
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className="flex max-w-[12rem] items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-[background-color,transform] duration-100 hover:bg-accent active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:max-w-[16rem]"
+          className="flex min-w-0 max-w-24 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-[background-color,transform] duration-100 hover:bg-accent active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:max-w-[16rem]"
         >
           <span className="truncate">{activeBusiness?.name ?? "Select Business"}</span>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
@@ -52,7 +52,7 @@ export function BusinessSelector({
         {open ? (
           <div
             role="menu"
-            className="absolute top-full left-0 z-50 mt-1 w-64 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+            className="fixed inset-x-3 top-14 z-50 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg sm:absolute sm:inset-x-auto sm:top-full sm:left-0 sm:mt-1 sm:w-64"
           >
             {businesses.length === 0 ? (
               <p className="px-3 py-2 text-sm text-muted-foreground">No businesses yet.</p>
