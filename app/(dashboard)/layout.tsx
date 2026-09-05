@@ -39,8 +39,12 @@ export default async function DashboardLayout({
         <header className="relative z-50 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4 sm:gap-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-2">
             <SidebarToggle />
-            <Link href="/dashboard" className="shrink-0 font-semibold whitespace-nowrap">
-              co-founder-ai
+            <Link
+              href="/dashboard"
+              aria-label="co-founder-ai"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground transition-transform duration-100 active:scale-95"
+            >
+              C
             </Link>
             {account ? (
               <BusinessSelector

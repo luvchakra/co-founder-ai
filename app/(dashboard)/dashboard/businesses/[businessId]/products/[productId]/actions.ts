@@ -1,16 +1,41 @@
 "use server";
 
+import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
   addKnowledgeSource,
   addWebsiteKnowledgeSource,
   deleteKnowledgeSource,
 } from "@/lib/knowledge/mutations";
+import { updateProduct } from "@/lib/tenancy/mutations";
 import { understandProduct } from "@/lib/ai/understand-product";
 import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
+import type { RenameActionState } from "@/lib/tenancy/types";
 
 function productPath(businessId: string, productId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}`;
+}
+
+export async function renameProductAction(
+  businessId: string,
+  productId: string,
+  _prevState: RenameActionState,
+  formData: FormData,
+): Promise<RenameActionState> {
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "Name is required." };
+
+  try {
+    await updateProduct(productId, { name });
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : "Something went wrong." };
+  }
+
+  revalidatePath(productPath(businessId, productId));
+  revalidatePath(`/dashboard/businesses/${businessId}`);
+  revalidatePath("/dashboard");
+  return { success: true };
 }
 
 export async function addManualSourceAction(

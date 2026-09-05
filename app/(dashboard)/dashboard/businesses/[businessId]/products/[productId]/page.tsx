@@ -6,11 +6,13 @@ import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { EditableName } from "@/components/tenancy/editable-name";
 import {
   addManualSourceAction,
   addWebsiteSourceAction,
   deleteSourceAction,
   generateProductProfileAction,
+  renameProductAction,
 } from "./actions";
 
 function truncate(text: string, max: number) {
@@ -34,6 +36,12 @@ export default async function ProductPage({
 
   return (
     <div className="flex flex-col gap-8">
+      <EditableName
+        name={product.name}
+        action={renameProductAction.bind(null, businessId, productId)}
+        headingClassName="text-xl font-semibold"
+      />
+
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Product profile</h2>
