@@ -15,3 +15,17 @@ export type Prospect = {
   created_at: string;
   updated_at: string;
 };
+
+export type ProspectSuggestion = {
+  id: string;
+  workspace_id: string;
+  company_name: string;
+  website: string | null;
+  industry: string | null;
+  company_size: string | null;
+  location: string | null;
+  description: string | null;
+  match_reason: string | null;
+  source_url: string | null;
+  created_at: string;
+};

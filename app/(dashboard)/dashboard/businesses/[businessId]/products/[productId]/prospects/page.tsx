@@ -177,9 +177,14 @@ export default async function ProspectsPage({
         </form>
       </div>
 
-      <Link href={`${basePath}/import`} className="text-sm underline underline-offset-4">
-        Import prospects from CSV
-      </Link>
+      <div className="flex items-center gap-4">
+        <Link href={`${basePath}/import`} className="text-sm underline underline-offset-4">
+          Import prospects from CSV
+        </Link>
+        <Link href={`${basePath}/discover`} className="text-sm underline underline-offset-4">
+          Discover prospects automatically
+        </Link>
+      </div>
     </div>
   );
 }

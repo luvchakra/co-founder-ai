@@ -96,3 +96,56 @@ export async function createProspectsBulk(
   if (error) throw error;
   return count ?? inputs.length;
 }
+
+/** Moves selected suggestions into `prospects` (via the existing bulk-insert path)
+ * and removes them from the staging table. Returns how many were added. */
+export async function approveProspectSuggestions(
+  workspaceId: string,
+  suggestionIds: string[],
+): Promise<number> {
+  if (suggestionIds.length === 0) return 0;
+  const supabase = await createClient();
+
+  const { data: suggestions, error: fetchError } = await supabase
+    .from("prospect_suggestions")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .in("id", suggestionIds);
+  if (fetchError) throw fetchError;
+  if (!suggestions || suggestions.length === 0) return 0;
+
+  const inserted = await createProspectsBulk(
+    workspaceId,
+    suggestions.map((s) => ({
+      companyName: s.company_name,
+      website: s.website ?? undefined,
+      industry: s.industry ?? undefined,
+      companySize: s.company_size ?? undefined,
+      location: s.location ?? undefined,
+      description: s.description ?? undefined,
+    })),
+  );
+
+  const { error: deleteError } = await supabase
+    .from("prospect_suggestions")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .in("id", suggestionIds);
+  if (deleteError) throw deleteError;
+
+  return inserted;
+}
+
+export async function discardProspectSuggestions(
+  workspaceId: string,
+  suggestionIds: string[],
+): Promise<void> {
+  if (suggestionIds.length === 0) return;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("prospect_suggestions")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .in("id", suggestionIds);
+  if (error) throw error;
+}

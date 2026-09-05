@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Prospect, ProspectStatus } from "./types";
+import type { Prospect, ProspectStatus, ProspectSuggestion } from "./types";
 
 export type ProspectFilters = {
   status?: ProspectStatus;
@@ -45,4 +45,17 @@ export async function listProspectIndustries(workspaceId: string): Promise<strin
   if (error) throw error;
   const values = new Set((data ?? []).map((row) => row.industry as string));
   return Array.from(values).sort();
+}
+
+export async function listProspectSuggestions(
+  workspaceId: string,
+): Promise<ProspectSuggestion[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospect_suggestions")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
 }

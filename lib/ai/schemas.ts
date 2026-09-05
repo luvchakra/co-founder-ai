@@ -135,3 +135,28 @@ export const ReplyClassificationSchema = z.object({
 });
 
 export type ReplyClassificationDraft = z.infer<typeof ReplyClassificationSchema>;
+
+/**
+ * Structured output for a single AI-discovered prospect candidate. Produced by
+ * structuring raw web-search findings -- see prompts/prospecting/discover_prospects_v1.ts.
+ * Mirrors ProspectResearchSchema's discipline: the model must not invent companies,
+ * only extract ones explicitly named in the findings it already gathered.
+ */
+export const DiscoveredProspectSchema = z.object({
+  company_name: z.string(),
+  website: z.string().nullable(),
+  industry: z.string().nullable(),
+  company_size: z.string().nullable(),
+  location: z.string().nullable(),
+  description: z.string(),
+  match_reason: z
+    .string()
+    .describe("Why this company fits the ICP, tied to specific ICP criteria -- not generic filler"),
+  source_url: z.string().nullable().describe("URL where this company was found, or null"),
+});
+
+export const DiscoveredProspectsSchema = z.object({
+  prospects: z.array(DiscoveredProspectSchema).max(10),
+});
+
+export type DiscoveredProspect = z.infer<typeof DiscoveredProspectSchema>;
