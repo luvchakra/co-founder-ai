@@ -17,7 +17,7 @@ export type ProspectFilters = {
   stage?: ProspectStage;
 };
 
-export type ProspectSort = "recent" | "stage";
+export type ProspectSort = "recent" | "stage" | "priority";
 
 /** Row shape after embedding the child tables listProspects joins for pipeline state --
  * prospect_research/prospect_scores are `unique` on prospect_id (schema-enforced
@@ -108,6 +108,18 @@ export async function listProspects(
     prospects = [...prospects].sort(
       (a, b) => PROSPECT_STAGES.indexOf(a.stage) - PROSPECT_STAGES.indexOf(b.stage),
     );
+  }
+
+  // R7: a work queue ordered by fit_score desc, with prospects that still need a next
+  // action surfaced ahead of ones that don't (sent -- waiting on the prospect -- or
+  // closed) regardless of score, since there's nothing to act on there anyway.
+  if (sort === "priority") {
+    prospects = [...prospects].sort((a, b) => {
+      const aNeedsAction = a.nextAction !== null;
+      const bNeedsAction = b.nextAction !== null;
+      if (aNeedsAction !== bNeedsAction) return aNeedsAction ? -1 : 1;
+      return (b.fit_score ?? -1) - (a.fit_score ?? -1);
+    });
   }
 
   return prospects;

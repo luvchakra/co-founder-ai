@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createProspect } from "@/lib/prospects/mutations";
 import { findDuplicateProspect } from "@/lib/prospects/duplicates";
+import { bulkResearchProspects, bulkScoreProspects } from "@/lib/prospects/bulk-actions";
 
 function prospectsPath(businessId: string, productId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
@@ -34,4 +35,32 @@ export async function createProspectAction(
   });
   revalidatePath(prospectsPath(businessId, productId));
   redirect(`${prospectsPath(businessId, productId)}/${prospect.id}`);
+}
+
+function bulkResultQuery(action: string, result: { completed: number; skipped: number; limitReached: boolean }) {
+  return `bulkAction=${action}&bulkCompleted=${result.completed}&bulkSkipped=${result.skipped}&bulkLimit=${result.limitReached ? 1 : 0}`;
+}
+
+export async function bulkResearchAction(
+  businessId: string,
+  productId: string,
+  workspaceId: string,
+  formData: FormData,
+) {
+  const ids = formData.getAll("ids").map(String);
+  const result = await bulkResearchProspects(workspaceId, ids);
+  revalidatePath(prospectsPath(businessId, productId));
+  redirect(`${prospectsPath(businessId, productId)}?${bulkResultQuery("research", result)}`);
+}
+
+export async function bulkScoreAction(
+  businessId: string,
+  productId: string,
+  workspaceId: string,
+  formData: FormData,
+) {
+  const ids = formData.getAll("ids").map(String);
+  const result = await bulkScoreProspects(workspaceId, ids);
+  revalidatePath(prospectsPath(businessId, productId));
+  redirect(`${prospectsPath(businessId, productId)}?${bulkResultQuery("score", result)}`);
 }
