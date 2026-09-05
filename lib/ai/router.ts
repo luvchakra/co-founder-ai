@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { APICallError, type LanguageModel } from "ai";
+import { APICallError, RetryError, type LanguageModel } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountIdForWorkspace } from "@/lib/tenancy/queries";
 import { decryptApiKey } from "@/lib/crypto/api-key";
@@ -139,16 +139,22 @@ export async function resolveAiModel(
  *
  * An AiProviderError thrown earlier (e.g. resolveAiModel's no_provider_connected) passes
  * through unchanged rather than getting re-wrapped as "unknown".
+ *
+ * generateText/generateObject retry transient failures internally and, once retries are
+ * exhausted, throw a RetryError wrapping the real failures in `.errors` -- classifying
+ * against the RetryError itself would always miss (it's never an APICallError), so the
+ * last underlying attempt is unwrapped first and everything below classifies that.
  */
 export function toAiProviderError(error: unknown, provider: AiProvider): AiProviderError {
   if (error instanceof AiProviderError) return error;
 
   console.error(`[ai/router] ${provider} request failed:`, error);
 
-  const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+  const cause = RetryError.isInstance(error) ? (error.lastError ?? error) : error;
+  const detail = cause instanceof Error && cause.message ? ` (${cause.message})` : "";
 
-  if (APICallError.isInstance(error)) {
-    const status = error.statusCode;
+  if (APICallError.isInstance(cause)) {
+    const status = cause.statusCode;
     if (status === 401 || status === 403) {
       return new AiProviderError(
         "invalid_key",
@@ -160,7 +166,7 @@ export function toAiProviderError(error: unknown, provider: AiProvider): AiProvi
     if (status === 429) {
       return new AiProviderError(
         "rate_limited",
-        `Your ${provider} account hit a rate limit. Try again shortly.${detail}`,
+        `Your ${provider} account hit a rate limit or quota cap.${detail}`,
         provider,
         error,
       );
@@ -189,7 +195,7 @@ export function toAiProviderError(error: unknown, provider: AiProvider): AiProvi
     );
   }
 
-  if (error instanceof Error && error.name === "TimeoutError") {
+  if (cause instanceof Error && cause.name === "TimeoutError") {
     return new AiProviderError(
       "timeout",
       `The request to ${provider} timed out.`,
