@@ -1,11 +1,11 @@
 export default function CheckEmailPage() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="text-xl font-semibold">Check your email</h1>
-      <p className="max-w-sm text-muted-foreground">
+    <div className="w-full max-w-sm rounded-2xl border border-landing-surface-border bg-landing-surface p-8 text-center">
+      <h1 className="text-2xl font-semibold text-landing-fg">Check your email</h1>
+      <p className="mt-3 text-sm text-landing-muted">
         We&apos;ve sent you a confirmation link. Click it to finish creating your account,
-        then sign in.
+        then log in.
       </p>
-    </main>
+    </div>
   );
 }
