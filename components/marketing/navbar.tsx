@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { LandingButton } from "./landing-button";
 
@@ -19,8 +20,15 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-landing-surface-border bg-landing-bg/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-landing-fg">
-          CoFounder<span className="text-landing-accent">AI</span>
+        <Link href="/" aria-label="CoFounderAI" className="shrink-0">
+          <Image
+            src="/logo-lockup.png"
+            alt="CoFounderAI"
+            width={1583}
+            height={350}
+            priority
+            className="h-8 w-auto"
+          />
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex" aria-label="Primary">
