@@ -2,16 +2,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getWorkspaceUsage } from "./queries";
 
 /**
- * MVP free tier (blueprint §22): no billing/Stripe yet, just a soft monthly cap on AI runs
- * per workspace so a single workspace can't run up unbounded API spend. Revisit once
- * paid plans exist.
+ * MVP free tier (blueprint §22): no billing/Stripe yet, just soft monthly caps on AI usage
+ * per workspace so a single workspace can't run up unbounded API spend. Revisit once paid
+ * plans exist.
+ *
+ * Two independent caps -- run count and total cost -- because they catch different
+ * failure modes: run count catches "too many cheap calls," cost catches "too few very
+ * expensive calls" (a handful of discover_prospects/research_prospect web-search runs can
+ * burn real money while staying well under the run-count cap). Whichever is hit first
+ * blocks further AI calls.
  */
 export const FREE_TIER_MONTHLY_RUN_LIMIT = 200;
+export const FREE_TIER_MONTHLY_COST_LIMIT_USD = 20;
 
 export class UsageLimitExceededError extends Error {
-  constructor(limit: number) {
+  constructor(reason: "runs" | "cost") {
     super(
-      `This workspace has used its free-tier allowance of ${limit} AI runs this month. Try again next month.`,
+      reason === "runs"
+        ? `This workspace has used its free-tier allowance of ${FREE_TIER_MONTHLY_RUN_LIMIT} AI runs this month. Try again next month.`
+        : `This workspace has used its free-tier allowance of $${FREE_TIER_MONTHLY_COST_LIMIT_USD} in AI spend this month. Try again next month.`,
     );
     this.name = "UsageLimitExceededError";
   }
@@ -25,6 +34,9 @@ export async function assertWithinUsageLimit(
 ): Promise<void> {
   const usage = await getWorkspaceUsage(workspaceId, client);
   if (usage.totalRuns >= FREE_TIER_MONTHLY_RUN_LIMIT) {
-    throw new UsageLimitExceededError(FREE_TIER_MONTHLY_RUN_LIMIT);
+    throw new UsageLimitExceededError("runs");
+  }
+  if (usage.totalCost >= FREE_TIER_MONTHLY_COST_LIMIT_USD) {
+    throw new UsageLimitExceededError("cost");
   }
 }

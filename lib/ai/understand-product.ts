@@ -11,6 +11,7 @@ import { hashInput } from "./hash";
 import { ProductProfileSchema, type ProductProfile } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { hasRecentSuccess } from "./dedup";
 
 const OPERATION = "understand_product";
 
@@ -63,6 +64,13 @@ export async function understandProduct(
   });
   const inputHash = hashInput({ prompt, version: UNDERSTAND_PRODUCT_PROMPT_VERSION });
   const model = AI_MODELS.balanced;
+
+  // Guards the force-regenerate path specifically -- the freshness check above already
+  // covers everything else, but "Regenerate" intentionally bypasses it, so a double-click
+  // there would otherwise re-bill for identical input every time.
+  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash)) {
+    if (product.product_profile) return product.product_profile;
+  }
 
   let profile: ProductProfile;
   try {

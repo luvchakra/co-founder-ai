@@ -12,6 +12,7 @@ import { hashInput } from "./hash";
 import { IcpProfileSchema, type IcpProfileDraft } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { hasRecentSuccess } from "./dedup";
 
 const OPERATION = "generate_icp";
 
@@ -47,6 +48,12 @@ export async function generateIcp(
   });
   const inputHash = hashInput({ prompt, version: GENERATE_ICP_PROMPT_VERSION });
   const model = AI_MODELS.balanced;
+
+  // Guards the force-regenerate path -- a double-click on "Regenerate" with nothing
+  // changed would otherwise re-bill for identical input every time.
+  if (existing && (await hasRecentSuccess(workspace.id, OPERATION, inputHash))) {
+    return existing;
+  }
 
   let draft: IcpProfileDraft;
   try {

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProspect } from "@/lib/prospects/queries";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
+import { getProspectResearch } from "@/lib/research/queries";
 import type { ProspectResearch } from "@/lib/research/types";
 import {
   researchProspectPrompt,
@@ -14,6 +15,7 @@ import { hashInput } from "./hash";
 import { ProspectResearchSchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { hasRecentSuccess } from "./dedup";
 
 const OPERATION = "research_prospect";
 const RESEARCH_TTL_DAYS = 30;
@@ -52,6 +54,13 @@ export async function researchProspect(prospectId: string): Promise<ProspectRese
   });
   const model = AI_MODELS.balanced;
   const inputHash = hashInput({ researchPrompt, version: RESEARCH_PROSPECT_PROMPT_VERSION });
+
+  // A double-click or resubmitted "Research" click with nothing changed would otherwise
+  // re-run the most expensive operation in the app (web search) twice for the same input.
+  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash)) {
+    const current = await getProspectResearch(prospectId);
+    if (current) return current;
+  }
 
   try {
     const searchResponse = await anthropic.messages.create({
