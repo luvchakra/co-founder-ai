@@ -2,7 +2,7 @@
 
 import { AiErrorNotice } from "@/components/errors/ai-error-notice";
 
-export default function IcpError({
+export default function ProspectError({
   error,
   reset,
 }: {

@@ -22,11 +22,17 @@ const MODEL_REGISTRY: Record<AiProvider, Record<AiQualityTier, string>> = {
     reasoning: "gpt-5.4-pro",
   },
   // Google's "-latest" aliases track its current recommended model per tier without
-  // needing a code change when Google ships a new generation.
+  // needing a code change when Google ships a new generation. "reasoning" intentionally
+  // matches "balanced" here rather than pointing at "gemini-pro-latest": Google's free
+  // API tier grants zero quota to Pro models (generate_content_free_tier_requests,
+  // limit: 0) while Flash models do get free quota, so a free-tier BYOK key would fail
+  // every research/discovery/strategy call outright if reasoning resolved to Pro. A
+  // Google account with Cloud billing enabled would have quota for Pro, but that isn't
+  // knowable from the API key alone, so this defaults to what actually works.
   google: {
     fast: "gemini-flash-lite-latest",
     balanced: "gemini-flash-latest",
-    reasoning: "gemini-pro-latest",
+    reasoning: "gemini-flash-latest",
   },
 };
 
