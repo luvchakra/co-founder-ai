@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 export type AuthActionState = { error: string } | null;
@@ -41,8 +42,19 @@ export async function signup(
     return { error: "Password must be at least 8 characters." };
   }
 
+  // Supabase's confirmation link redirects to the project's dashboard-configured Site
+  // URL unless we tell it otherwise -- without this, that link always points wherever
+  // Site URL happens to be set (e.g. localhost) regardless of where the founder actually
+  // signed up from. Reading the request's own origin means this works correctly in both
+  // local dev and production without hardcoding either.
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${origin}/auth/callback` },
+  });
   if (error) {
     return { error: error.message };
   }
