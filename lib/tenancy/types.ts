@@ -40,3 +40,7 @@ export type Workspace = {
   created_at: string;
   updated_at: string;
 };
+
+/** Shared by every rename action (business, product) and the EditableName component
+ * that submits to them. */
+export type RenameActionState = { error: string } | { success: true } | null;

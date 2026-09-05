@@ -51,13 +51,6 @@ export function Sidebar({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, setOpen]);
 
-  // A link click inside the drawer closes it immediately (per-link onClick below); this
-  // is the fallback for navigation the drawer didn't cause itself, e.g. browser back/forward.
-  useEffect(() => {
-    setOpen(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
   if (!open) return null;
 
   return (
@@ -115,7 +108,13 @@ export function Sidebar({
                 </button>
                 <Link
                   href={`/dashboard/businesses/${business.id}`}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    // Expand immediately (don't wait on the route transition) and, unlike
+                    // every other link in this drawer, don't close it -- the whole point
+                    // of clicking a business is to see its products open up next, not to
+                    // have the drawer vanish before that can happen.
+                    setExpanded((prev) => new Set(prev).add(business.id));
+                  }}
                   className={cn(
                     "flex-1 truncate rounded-md px-2 py-1.5 hover:bg-accent",
                     isActiveBusiness && "bg-accent font-medium",

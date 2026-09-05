@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBusiness, listProducts } from "@/lib/tenancy/queries";
 import { createProductAction } from "@/app/(dashboard)/dashboard/actions";
+import { renameBusinessAction } from "./actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EditableName } from "@/components/tenancy/editable-name";
 
 export default async function BusinessPage({
   params,
@@ -19,7 +21,11 @@ export default async function BusinessPage({
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">
-      <h1 className="text-xl font-semibold">{business.name}</h1>
+      <EditableName
+        name={business.name}
+        action={renameBusinessAction.bind(null, business.id)}
+        headingClassName="text-xl font-semibold"
+      />
 
       <section>
         <h2 className="font-medium">Products</h2>

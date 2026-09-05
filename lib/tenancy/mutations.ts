@@ -32,6 +32,24 @@ export async function createBusiness(
   return data;
 }
 
+export async function updateBusiness(
+  businessId: string,
+  input: { name: string },
+): Promise<Business> {
+  const name = input.name.trim();
+  if (!name) throw new Error("Business name is required.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .update({ name })
+    .eq("id", businessId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function createProduct(
   businessId: string,
   input: { name: string; description?: string; website?: string },
@@ -48,6 +66,24 @@ export async function createProduct(
       description: input.description?.trim() || null,
       website: input.website?.trim() || null,
     })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateProduct(
+  productId: string,
+  input: { name: string },
+): Promise<Product> {
+  const name = input.name.trim();
+  if (!name) throw new Error("Product name is required.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("products")
+    .update({ name })
+    .eq("id", productId)
     .select()
     .single();
   if (error) throw error;
