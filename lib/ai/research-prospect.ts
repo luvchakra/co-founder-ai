@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject, generateText } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getProspect } from "@/lib/prospects/queries";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
@@ -10,23 +10,26 @@ import {
   structureResearchPrompt,
   RESEARCH_PROSPECT_PROMPT_VERSION,
 } from "@/prompts/research/research_prospect_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ProspectResearchSchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
 import { hasRecentSuccess } from "./dedup";
+import { resolveAiModel, toAiProviderError } from "./router";
+import { createWebSearchTools } from "./provider-factory";
 
 const OPERATION = "research_prospect";
 const RESEARCH_TTL_DAYS = 30;
 
 /**
- * Researches a prospect via two calls:
- * 1. Sonnet + the built-in Anthropic web_search tool gathers sourced findings. This is
- *    the app's "one research provider" (blueprint §3) -- no separate search API/key
- *    needed, since it rides on the same Anthropic credential lib/ai/ already requires.
- * 2. Haiku structures those findings into ProspectResearchSchema -- pure extraction from
- *    already-written text, exactly the "cheap model" case blueprint §11 calls out.
+ * Researches a prospect via two calls through the BYOK router (lib/ai/router.ts):
+ * 1. The operation's "reasoning" tier model plus that provider's own provider-executed
+ *    web search tool (lib/ai/provider-factory.ts's createWebSearchTools) gathers sourced
+ *    findings -- whichever of the three providers the account connected.
+ * 2. The same provider's "fast" tier (via resolveAiModel's modelAtTier, no second
+ *    credential fetch) structures those findings into ProspectResearchSchema -- pure
+ *    extraction from already-written text, exactly the "cheap model" case blueprint §11
+ *    calls out.
  *
  * The model is instructed not to invent facts; each evidence item carries a
  * fact/inference/assumption/unknown confidence tag (blueprint §33) rather than being
@@ -52,53 +55,57 @@ export async function researchProspect(prospectId: string): Promise<ProspectRese
     productProfile: product.product_profile,
     icp,
   });
-  const model = AI_MODELS.balanced;
-  const inputHash = hashInput({ researchPrompt, version: RESEARCH_PROSPECT_PROMPT_VERSION });
+
+  const { accountId, provider, modelId, model, modelAtTier } = await resolveAiModel(
+    workspace.id,
+    OPERATION,
+  );
+  const inputHash = hashInput({
+    researchPrompt,
+    version: RESEARCH_PROSPECT_PROMPT_VERSION,
+    model: modelId,
+  });
 
   // A double-click or resubmitted "Research" click with nothing changed would otherwise
   // re-run the most expensive operation in the app (web search) twice for the same input.
-  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash)) {
+  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash, undefined, modelId)) {
     const current = await getProspectResearch(prospectId);
     if (current) return current;
   }
 
+  const startedAt = Date.now();
   try {
-    const searchResponse = await anthropic.messages.create({
+    const searchResponse = await generateText({
       model,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: researchPrompt }],
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      tools: createWebSearchTools(provider),
+      prompt: researchPrompt,
     });
 
-    let findings = "";
-    for (const block of searchResponse.content) {
-      if (block.type === "text") findings += `${block.text}\n\n`;
-    }
-    findings = findings.trim();
+    const findings = searchResponse.text.trim();
     if (!findings) throw new Error("Web research returned no findings.");
 
-    const structureResponse = await anthropic.messages.parse({
-      model: AI_MODELS.fast,
-      max_tokens: 2048,
-      messages: [{ role: "user", content: structureResearchPrompt(findings) }],
-      output_config: { format: zodOutputFormat(ProspectResearchSchema) },
+    const structureResponse = await generateObject({
+      model: modelAtTier("fast"),
+      schema: ProspectResearchSchema,
+      prompt: structureResearchPrompt(findings),
     });
-    if (!structureResponse.parsed_output) {
-      throw new Error("Could not structure research findings.");
-    }
-    const draft = structureResponse.parsed_output;
+    const draft = structureResponse.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: RESEARCH_PROSPECT_PROMPT_VERSION,
       inputHash,
-      inputTokens: searchResponse.usage.input_tokens + structureResponse.usage.input_tokens,
+      inputTokens:
+        (searchResponse.usage.inputTokens ?? 0) + (structureResponse.usage.inputTokens ?? 0),
       outputTokens:
-        searchResponse.usage.output_tokens + structureResponse.usage.output_tokens,
-      searchCount: searchResponse.usage.server_tool_use?.web_search_requests,
+        (searchResponse.usage.outputTokens ?? 0) + (structureResponse.usage.outputTokens ?? 0),
+      searchCount: searchResponse.toolCalls.length,
       status: "succeeded",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
 
     const supabase = await createClient();
@@ -126,14 +133,19 @@ export async function researchProspect(prospectId: string): Promise<ProspectRese
     if (error) throw error;
     return data;
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: RESEARCH_PROSPECT_PROMPT_VERSION,
       inputHash,
       status: "failed",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 }

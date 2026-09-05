@@ -1,30 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 // engineering-blueprint.md §3's "single AI provider, no abstraction" decision is
-// superseded by docs/byok-ai-requirements.md (BYOK) -- see lib/ai/router.ts for the
-// current multi-provider entry point. This raw Anthropic client and AI_MODELS remain
-// only until Story E rewires the last two web-search operations
-// (research-prospect.ts, discover-prospects.ts) onto the router; every other
-// lib/ai/*.ts operation already resolves its model through the router instead.
-export const anthropic = new Anthropic();
+// superseded by docs/byok-ai-requirements.md (BYOK) -- lib/ai/router.ts is the current
+// multi-provider entry point every lib/ai/*.ts operation resolves its model through.
+// This module now only holds cost-estimation pricing shared across providers.
 
-/**
- * Model tiers per blueprint §11 "cheap model first" -- pick the cheapest tier that
- * reliably does the job; use `reasoning` only where synthesis/strategy quality actually
- * matters. Each lib/ai/ operation picks a tier explicitly rather than hard-coding one
- * model everywhere.
- */
-export const AI_MODELS = {
-  fast: "claude-haiku-4-5",
-  balanced: "claude-sonnet-5",
-  reasoning: "claude-opus-5",
-} as const;
-
-export type AiModel = (typeof AI_MODELS)[keyof typeof AI_MODELS];
-
-// Rough per-provider pricing for every model lib/ai/model-registry.ts can hand out, plus
-// the legacy Anthropic-only entries above -- keyed by model ID so estimateCost works
-// regardless of which provider actually served a BYOK-routed request.
+// Rough per-provider pricing for every model lib/ai/model-registry.ts can hand out --
+// keyed by model ID so estimateCost works regardless of which provider actually served a
+// BYOK-routed request.
 const PRICING_PER_MILLION_TOKENS: Record<string, { input: number; output: number }> = {
   "claude-haiku-4-5": { input: 1, output: 5 },
   "claude-sonnet-5": { input: 2, output: 10 },

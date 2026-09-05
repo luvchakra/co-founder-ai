@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject, generateText } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
@@ -9,27 +9,30 @@ import {
   structureDiscoveryPrompt,
   DISCOVER_PROSPECTS_PROMPT_VERSION,
 } from "@/prompts/prospecting/discover_prospects_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { DiscoveredProspectsSchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
 import { acquireDiscoveryLock, releaseDiscoveryLock } from "./discovery-lock";
+import { resolveAiModel, toAiProviderError } from "./router";
+import { createWebSearchTools } from "./provider-factory";
 
 const OPERATION = "discover_prospects";
 
 /**
  * Finds up to 10 new prospect companies matching the workspace's approved ICP by
- * searching the live web -- same two-call pattern as researchProspect (Sonnet +
- * built-in web_search gathers findings, Haiku structures them). Results are stored as
- * *suggestions*, never inserted straight into `prospects`: a noisy search or a loose
- * ICP should never silently pollute the real pipeline. The founder reviews and
- * approves/discards each one in the UI.
+ * searching the live web -- same two-call pattern as researchProspect, through the BYOK
+ * router: the operation's "reasoning" tier plus that provider's own provider-executed
+ * web search tool gathers findings, then the "fast" tier (via modelAtTier, no second
+ * credential fetch) structures them. Results are stored as *suggestions*, never inserted
+ * straight into `prospects`: a noisy search or a loose ICP should never silently pollute
+ * the real pipeline. The founder reviews and approves/discards each one in the UI.
  *
- * max_uses: 6, not 10 -- production data showed 10 let this run up to 300K+ input
- * tokens ($0.60-0.80/call) without a corresponding quality gain; 6 covers 10 companies
- * in practice, and the prompt now explicitly tells the model to stop once it has enough
- * evidence rather than exhausting the budget by default (ai-usage-cost-requirements R3).
+ * Anthropic's maxUses is capped at 6 in provider-factory.ts's createWebSearchTools, not
+ * 10 -- production data showed 10 let this run up to 300K+ input tokens ($0.60-0.80/call)
+ * without a corresponding quality gain; 6 covers 10 companies in practice, and the prompt
+ * now explicitly tells the model to stop once it has enough evidence rather than
+ * exhausting the budget by default (ai-usage-cost-requirements R3).
  * No input-hash dedup here (unlike understandProduct/generateIcp/researchProspect) --
  * the ICP + known-companies list this searches from shifts as prospects are added, so
  * there's no stable "same input" to key off; an explicit per-workspace lock (R6) is what
@@ -63,50 +66,54 @@ export async function discoverProspects(workspaceId: string): Promise<ProspectSu
       icp,
       knownCompanies,
     });
-    const model = AI_MODELS.balanced;
-    const inputHash = hashInput({ prompt, version: DISCOVER_PROSPECTS_PROMPT_VERSION });
 
+    const { accountId, provider, modelId, model, modelAtTier } = await resolveAiModel(
+      workspaceId,
+      OPERATION,
+    );
+    const inputHash = hashInput({
+      prompt,
+      version: DISCOVER_PROSPECTS_PROMPT_VERSION,
+      model: modelId,
+    });
+
+    const startedAt = Date.now();
     try {
-      const searchResponse = await anthropic.messages.create({
+      const searchResponse = await generateText({
         model,
-        max_tokens: 8192,
-        messages: [{ role: "user", content: prompt }],
-        tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
+        tools: createWebSearchTools(provider),
+        prompt,
       });
 
-      let findings = "";
-      for (const block of searchResponse.content) {
-        if (block.type === "text") findings += `${block.text}\n\n`;
-      }
-      findings = findings.trim();
+      const findings = searchResponse.text.trim();
       if (!findings) throw new Error("Prospect discovery returned no findings.");
 
-      const structureResponse = await anthropic.messages.parse({
-        model: AI_MODELS.fast,
-        max_tokens: 4096,
-        messages: [{ role: "user", content: structureDiscoveryPrompt(findings) }],
-        output_config: { format: zodOutputFormat(DiscoveredProspectsSchema) },
+      const structureResponse = await generateObject({
+        model: modelAtTier("fast"),
+        schema: DiscoveredProspectsSchema,
+        prompt: structureDiscoveryPrompt(findings),
       });
-      if (!structureResponse.parsed_output) {
-        throw new Error("Could not structure discovered prospects.");
-      }
 
       const knownLower = new Set(knownCompanies.map((c) => c.toLowerCase()));
-      const candidates = structureResponse.parsed_output.prospects
+      const candidates = structureResponse.object.prospects
         .filter((c) => !knownLower.has(c.company_name.toLowerCase()))
         .slice(0, 10);
 
       await recordAiRun({
         workspaceId,
         operation: OPERATION,
-        model,
+        model: modelId,
         promptVersion: DISCOVER_PROSPECTS_PROMPT_VERSION,
         inputHash,
-        inputTokens: searchResponse.usage.input_tokens + structureResponse.usage.input_tokens,
+        inputTokens:
+          (searchResponse.usage.inputTokens ?? 0) + (structureResponse.usage.inputTokens ?? 0),
         outputTokens:
-          searchResponse.usage.output_tokens + structureResponse.usage.output_tokens,
-        searchCount: searchResponse.usage.server_tool_use?.web_search_requests,
+          (searchResponse.usage.outputTokens ?? 0) + (structureResponse.usage.outputTokens ?? 0),
+        searchCount: searchResponse.toolCalls.length,
         status: "succeeded",
+        accountId,
+        provider,
+        durationMs: Date.now() - startedAt,
       });
 
       if (candidates.length === 0) return [];
@@ -131,15 +138,20 @@ export async function discoverProspects(workspaceId: string): Promise<ProspectSu
       if (error) throw error;
       return data;
     } catch (error) {
+      const aiError = toAiProviderError(error, provider);
       await recordAiRun({
         workspaceId,
         operation: OPERATION,
-        model,
+        model: modelId,
         promptVersion: DISCOVER_PROSPECTS_PROMPT_VERSION,
         inputHash,
         status: "failed",
+        accountId,
+        provider,
+        durationMs: Date.now() - startedAt,
+        errorCode: aiError.code,
       });
-      throw error;
+      throw aiError;
     }
   } finally {
     await releaseDiscoveryLock(workspaceId);

@@ -3,7 +3,7 @@ import { APICallError, type LanguageModel } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountIdForWorkspace } from "@/lib/tenancy/queries";
 import { decryptApiKey } from "@/lib/crypto/api-key";
-import { resolveModelId, type AiProvider } from "./model-registry";
+import { resolveModelId, type AiProvider, type AiQualityTier } from "./model-registry";
 import { getOperationSpec, type AiOperation } from "./operation-registry";
 import { createLanguageModel } from "./provider-factory";
 
@@ -46,6 +46,14 @@ export type ResolvedAiModel = {
   provider: AiProvider;
   modelId: string;
   model: LanguageModel;
+  /**
+   * Builds a model at a different quality tier using the same already-resolved
+   * credential, without a second DB fetch/decrypt. For multi-step operations like
+   * research_prospect and discover_prospects: the reasoning tier gathers findings via
+   * web search, then the fast tier structures them -- one credential resolution serves
+   * both steps.
+   */
+  modelAtTier: (tier: AiQualityTier, options?: { webSearch?: boolean }) => LanguageModel;
 };
 
 type ProviderCredentialRow = {
@@ -109,7 +117,11 @@ export async function resolveAiModel(
     webSearch: spec.requiresWebSearch,
   });
 
-  return { accountId, provider: credential.provider, modelId, model };
+  const provider = credential.provider;
+  const modelAtTier = (tier: AiQualityTier, options?: { webSearch?: boolean }) =>
+    createLanguageModel(provider, apiKey, resolveModelId(provider, tier), options);
+
+  return { accountId, provider, modelId, model, modelAtTier };
 }
 
 /**
