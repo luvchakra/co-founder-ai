@@ -26,6 +26,9 @@ export default async function DashboardLayout({
         </Link>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           {account ? <span>{account.name}</span> : null}
+          <Link href="/dashboard/settings/ai-provider" className="hover:underline">
+            AI Provider
+          </Link>
           <form action={signOut}>
             <SubmitButton variant="ghost" size="sm" pendingText="Signing out...">
               Sign out
