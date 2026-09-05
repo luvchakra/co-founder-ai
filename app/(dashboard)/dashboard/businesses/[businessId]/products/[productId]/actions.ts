@@ -7,6 +7,7 @@ import {
   deleteKnowledgeSource,
 } from "@/lib/knowledge/mutations";
 import { understandProduct } from "@/lib/ai/understand-product";
+import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
 function productPath(businessId: string, productId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}`;
@@ -51,9 +52,12 @@ export async function deleteSourceAction(
 export async function generateProductProfileAction(
   businessId: string,
   productId: string,
+  _prevState: AiActionState,
   formData: FormData,
-) {
-  const force = formData.get("force") === "true";
-  await understandProduct(productId, { force });
-  revalidatePath(productPath(businessId, productId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    const force = formData.get("force") === "true";
+    await understandProduct(productId, { force });
+    revalidatePath(productPath(businessId, productId));
+  });
 }

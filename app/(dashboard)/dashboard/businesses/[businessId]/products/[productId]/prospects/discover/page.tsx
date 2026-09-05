@@ -5,6 +5,7 @@ import { listProspectSuggestions } from "@/lib/prospects/queries";
 import { getRecentOperationCost } from "@/lib/usage/queries";
 import { formatCostHint } from "@/lib/usage/format";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { AiActionForm } from "@/components/ai/ai-action-form";
 import {
   runDiscoveryAction,
   approveSuggestionsAction,
@@ -44,11 +45,13 @@ export default async function DiscoverProspectsPage({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <form action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}>
-            <SubmitButton pendingText="Searching the web...">
-              Find 10 new prospects
-            </SubmitButton>
-          </form>
+          <AiActionForm
+            action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}
+            buttonLabel="Find 10 new prospects"
+            pendingText="Searching the web..."
+            wrapperClassName="flex flex-col items-end gap-2"
+            buttonProps={{ size: "default" }}
+          />
           <p className="text-xs text-muted-foreground">{formatCostHint(costSample)}</p>
         </div>
       </div>

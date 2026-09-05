@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,11 +40,11 @@ export default async function IcpPage({
         <p className="text-sm text-muted-foreground">
           No ICP yet. Generate one from the approved product profile.
         </p>
-        <form action={generateIcpAction.bind(null, businessId, productId)}>
-          <SubmitButton size="sm" pendingText="Generating...">
-            Generate ICP
-          </SubmitButton>
-        </form>
+        <AiActionForm
+          action={generateIcpAction.bind(null, businessId, productId)}
+          buttonLabel="Generate ICP"
+          pendingText="Generating..."
+        />
       </div>
     );
   }
@@ -61,12 +62,14 @@ export default async function IcpPage({
           {icp.status === "approved" ? "Approved" : "Draft"}
         </span>
         <div className="flex gap-2">
-          <form action={generateIcpAction.bind(null, businessId, productId)}>
+          <AiActionForm
+            action={generateIcpAction.bind(null, businessId, productId)}
+            buttonLabel="Regenerate"
+            pendingText="Regenerating..."
+            buttonProps={{ variant: "outline" }}
+          >
             <input type="hidden" name="force" value="true" />
-            <SubmitButton variant="outline" size="sm" pendingText="Regenerating...">
-              Regenerate
-            </SubmitButton>
-          </form>
+          </AiActionForm>
           {icp.status === "draft" ? (
             <form action={approveIcpAction.bind(null, businessId, productId, icp.id)}>
               <SubmitButton size="sm" pendingText="Approving...">

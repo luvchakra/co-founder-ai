@@ -7,6 +7,7 @@ import {
   approveProspectSuggestions,
   discardProspectSuggestions,
 } from "@/lib/prospects/mutations";
+import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
 function discoverPath(businessId: string, productId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/discover`;
@@ -19,10 +20,12 @@ export async function runDiscoveryAction(
   businessId: string,
   productId: string,
   workspaceId: string,
-) {
-  await discoverProspects(workspaceId);
-  revalidatePath(discoverPath(businessId, productId));
-  redirect(discoverPath(businessId, productId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await discoverProspects(workspaceId);
+    revalidatePath(discoverPath(businessId, productId));
+    redirect(discoverPath(businessId, productId));
+  });
 }
 
 export async function approveSuggestionsAction(

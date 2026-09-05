@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { generateIcp } from "@/lib/ai/generate-icp";
 import { updateIcpProfile, approveIcpProfile, parseListField } from "@/lib/icp/mutations";
+import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
 function icpPath(businessId: string, productId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/icp`;
@@ -11,11 +12,14 @@ function icpPath(businessId: string, productId: string) {
 export async function generateIcpAction(
   businessId: string,
   productId: string,
+  _prevState: AiActionState,
   formData: FormData,
-) {
-  const force = formData.get("force") === "true";
-  await generateIcp(productId, { force });
-  revalidatePath(icpPath(businessId, productId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    const force = formData.get("force") === "true";
+    await generateIcp(productId, { force });
+    revalidatePath(icpPath(businessId, productId));
+  });
 }
 
 export async function updateIcpAction(

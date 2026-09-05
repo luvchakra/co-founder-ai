@@ -17,6 +17,7 @@ import {
   deleteMessage,
 } from "@/lib/messages/mutations";
 import { closeConversation } from "@/lib/conversations/mutations";
+import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
   return `/dashboard/businesses/${businessId}/products/${productId}/prospects/${prospectId}`;
@@ -82,9 +83,11 @@ export async function researchProspectAction(
   businessId: string,
   productId: string,
   prospectId: string,
-) {
-  await researchProspect(prospectId);
-  revalidatePath(prospectPath(businessId, productId, prospectId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await researchProspect(prospectId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
 
 export async function scoreProspectAction(
@@ -100,11 +103,14 @@ export async function generateStrategyAction(
   businessId: string,
   productId: string,
   prospectId: string,
+  _prevState: AiActionState,
   formData: FormData,
-) {
-  const contactId = String(formData.get("contactId") ?? "") || null;
-  await generateOutreachStrategy(prospectId, contactId);
-  revalidatePath(prospectPath(businessId, productId, prospectId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    const contactId = String(formData.get("contactId") ?? "") || null;
+    await generateOutreachStrategy(prospectId, contactId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
 
 export async function approveStrategyAction(
@@ -122,9 +128,11 @@ export async function generateMessageAction(
   productId: string,
   prospectId: string,
   strategyId: string,
-) {
-  await generateOutreachMessage(strategyId);
-  revalidatePath(prospectPath(businessId, productId, prospectId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await generateOutreachMessage(strategyId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
 
 export async function updateMessageContentAction(
@@ -173,9 +181,11 @@ export async function generateReplyAction(
   productId: string,
   prospectId: string,
   conversationId: string,
-) {
-  await generateReply(conversationId);
-  revalidatePath(prospectPath(businessId, productId, prospectId));
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await generateReply(conversationId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
 
 export async function closeConversationAction(

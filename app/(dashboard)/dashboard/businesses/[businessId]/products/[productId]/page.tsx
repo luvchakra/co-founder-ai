@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProductKnowledge } from "@/lib/knowledge/queries";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,12 +37,14 @@ export default async function ProductPage({
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Product profile</h2>
-          <form action={generateProductProfileAction.bind(null, businessId, productId)}>
+          <AiActionForm
+            action={generateProductProfileAction.bind(null, businessId, productId)}
+            buttonLabel={profile ? "Regenerate" : "Generate profile"}
+            pendingText="Generating..."
+            buttonProps={{ disabled: sources.length === 0 }}
+          >
             {profile ? <input type="hidden" name="force" value="true" /> : null}
-            <SubmitButton size="sm" disabled={sources.length === 0} pendingText="Generating...">
-              {profile ? "Regenerate" : "Generate profile"}
-            </SubmitButton>
-          </form>
+          </AiActionForm>
         </div>
 
         {sources.length === 0 ? (

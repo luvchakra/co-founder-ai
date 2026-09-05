@@ -12,6 +12,7 @@ import { formatCostHint } from "@/lib/usage/format";
 import { listConversations } from "@/lib/conversations/queries";
 import type { Message } from "@/lib/messages/types";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -266,11 +267,12 @@ export default async function ProspectDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Research</h2>
           <div className="flex flex-col items-end gap-1">
-            <form action={researchProspectAction.bind(null, businessId, productId, prospect.id)}>
-              <SubmitButton size="sm" pendingText="Researching...">
-                {research ? "Re-research" : "Research"}
-              </SubmitButton>
-            </form>
+            <AiActionForm
+              action={researchProspectAction.bind(null, businessId, productId, prospect.id)}
+              buttonLabel={research ? "Re-research" : "Research"}
+              pendingText="Researching..."
+              wrapperClassName="flex flex-col items-end gap-2"
+            />
             <p className="text-xs text-muted-foreground">{formatCostHint(researchCostSample)}</p>
           </div>
         </div>
@@ -378,9 +380,12 @@ export default async function ProspectDetailPage({
           ) : null}
         </div>
 
-        <form
+        <AiActionForm
           action={generateStrategyAction.bind(null, businessId, productId, prospect.id)}
-          className="flex items-center gap-2"
+          buttonLabel={strategy ? "Generate new strategy" : "Generate strategy"}
+          pendingText="Generating..."
+          formClassName="flex items-center gap-2"
+          buttonProps={{ disabled: !research }}
         >
           {contacts.length > 0 ? (
             <select
@@ -396,10 +401,7 @@ export default async function ProspectDetailPage({
               ))}
             </select>
           ) : null}
-          <SubmitButton size="sm" disabled={!research} pendingText="Generating...">
-            {strategy ? "Generate new strategy" : "Generate strategy"}
-          </SubmitButton>
-        </form>
+        </AiActionForm>
 
         {!research ? (
           <p className="text-sm text-muted-foreground">Research this prospect first.</p>
@@ -446,7 +448,7 @@ export default async function ProspectDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Messages</h2>
           {strategy?.status === "approved" ? (
-            <form
+            <AiActionForm
               action={generateMessageAction.bind(
                 null,
                 businessId,
@@ -454,11 +456,9 @@ export default async function ProspectDetailPage({
                 prospect.id,
                 strategy.id,
               )}
-            >
-              <SubmitButton size="sm" pendingText="Generating...">
-                Generate message
-              </SubmitButton>
-            </form>
+              buttonLabel="Generate message"
+              pendingText="Generating..."
+            />
           ) : null}
         </div>
 
@@ -552,7 +552,7 @@ export default async function ProspectDetailPage({
                 </ul>
 
                 {c.status === "replied" ? (
-                  <form
+                  <AiActionForm
                     action={generateReplyAction.bind(
                       null,
                       businessId,
@@ -560,11 +560,9 @@ export default async function ProspectDetailPage({
                       prospect.id,
                       c.id,
                     )}
-                  >
-                    <SubmitButton size="sm" pendingText="Generating...">
-                      Generate reply
-                    </SubmitButton>
-                  </form>
+                    buttonLabel="Generate reply"
+                    pendingText="Generating..."
+                  />
                 ) : null}
               </div>
             ))}
