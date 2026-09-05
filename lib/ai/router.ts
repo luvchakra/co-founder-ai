@@ -33,8 +33,8 @@ export class AiProviderError extends Error {
   readonly code: AiErrorCode;
   readonly provider?: AiProvider;
 
-  constructor(code: AiErrorCode, message: string, provider?: AiProvider) {
-    super(message);
+  constructor(code: AiErrorCode, message: string, provider?: AiProvider, cause?: unknown) {
+    super(message, cause !== undefined ? { cause } : undefined);
     this.name = "AiProviderError";
     this.code = code;
     this.provider = provider;
@@ -130,42 +130,63 @@ export async function resolveAiModel(
  * could not complete this request" shape and ai_runs.error_code stays one of the fixed
  * AiErrorCode values regardless of which provider's SDK produced the failure.
  *
+ * Always logs the raw error server-side first (Vercel function logs, never sent to the
+ * client) -- without this, a failure that doesn't match one of the classified shapes
+ * below becomes undiagnosable: the client only ever sees the wrapped AiProviderError,
+ * never the original. The underlying message is also appended to the user-facing text
+ * where available -- provider SDKs never echo the API key itself back in an error body,
+ * only what's wrong with the request.
+ *
  * An AiProviderError thrown earlier (e.g. resolveAiModel's no_provider_connected) passes
  * through unchanged rather than getting re-wrapped as "unknown".
  */
 export function toAiProviderError(error: unknown, provider: AiProvider): AiProviderError {
   if (error instanceof AiProviderError) return error;
 
+  console.error(`[ai/router] ${provider} request failed:`, error);
+
+  const detail = error instanceof Error && error.message ? ` (${error.message})` : "";
+
   if (APICallError.isInstance(error)) {
     const status = error.statusCode;
     if (status === 401 || status === 403) {
       return new AiProviderError(
         "invalid_key",
-        `Your ${provider} API key could not complete this request.`,
+        `Your ${provider} API key could not complete this request.${detail}`,
         provider,
+        error,
       );
     }
     if (status === 429) {
       return new AiProviderError(
         "rate_limited",
-        `Your ${provider} account hit a rate limit. Try again shortly.`,
+        `Your ${provider} account hit a rate limit. Try again shortly.${detail}`,
         provider,
+        error,
       );
     }
     if (status === 404) {
       return new AiProviderError(
         "model_unavailable",
-        `The model this feature needs isn't available on your ${provider} account.`,
+        `The model this feature needs isn't available on your ${provider} account.${detail}`,
         provider,
+        error,
       );
     }
     if (status !== undefined && status >= 500) {
       return new AiProviderError(
         "provider_unavailable",
-        `${provider} is currently unavailable. Try again shortly.`,
+        `${provider} is currently unavailable. Try again shortly.${detail}`,
         provider,
+        error,
       );
     }
+    return new AiProviderError(
+      "unknown",
+      `Your ${provider} API key could not complete this request.${detail}`,
+      provider,
+      error,
+    );
   }
 
   if (error instanceof Error && error.name === "TimeoutError") {
@@ -173,12 +194,14 @@ export function toAiProviderError(error: unknown, provider: AiProvider): AiProvi
       "timeout",
       `The request to ${provider} timed out.`,
       provider,
+      error,
     );
   }
 
   return new AiProviderError(
     "unknown",
-    `Your ${provider} API key could not complete this request.`,
+    `Your ${provider} API key could not complete this request.${detail}`,
     provider,
+    error,
   );
 }
