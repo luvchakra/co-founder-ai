@@ -97,8 +97,12 @@ export async function createProspectsBulk(
   return count ?? inputs.length;
 }
 
-/** Moves selected suggestions into `prospects` (via the existing bulk-insert path)
- * and removes them from the staging table. Returns how many were added. */
+/** Moves selected suggestions into `prospects` and removes them from the staging
+ * table. Also seeds a `prospect_research` row from each suggestion's `match_reason`/
+ * `source_url` (docs/prospects-pipeline-redesign-requirements.md R5) -- otherwise "why
+ * we sourced this" is dropped on approval and research starts from nothing. Inserts
+ * directly (rather than via `createProspectsBulk`) because it needs the new prospect
+ * ids back to link the research rows. Returns how many prospects were added. */
 export async function approveProspectSuggestions(
   workspaceId: string,
   suggestionIds: string[],
@@ -114,17 +118,53 @@ export async function approveProspectSuggestions(
   if (fetchError) throw fetchError;
   if (!suggestions || suggestions.length === 0) return 0;
 
-  const inserted = await createProspectsBulk(
-    workspaceId,
-    suggestions.map((s) => ({
-      companyName: s.company_name,
-      website: s.website ?? undefined,
-      industry: s.industry ?? undefined,
-      companySize: s.company_size ?? undefined,
-      location: s.location ?? undefined,
-      description: s.description ?? undefined,
-    })),
-  );
+  const { data: inserted, error: insertError } = await supabase
+    .from("prospects")
+    .insert(
+      suggestions.map((s) => ({
+        workspace_id: workspaceId,
+        ...toRow({
+          companyName: s.company_name,
+          website: s.website ?? undefined,
+          industry: s.industry ?? undefined,
+          companySize: s.company_size ?? undefined,
+          location: s.location ?? undefined,
+          description: s.description ?? undefined,
+        }),
+      })),
+    )
+    .select();
+  if (insertError) throw insertError;
+
+  const researchRows = suggestions
+    .map((suggestion, i) => ({ suggestion, prospect: inserted?.[i] }))
+    .filter(
+      (
+        pair,
+      ): pair is { suggestion: (typeof suggestions)[number]; prospect: Prospect } =>
+        Boolean(pair.prospect) && Boolean(pair.suggestion.match_reason || pair.suggestion.source_url),
+    )
+    .map(({ suggestion, prospect }) => ({
+      workspace_id: workspaceId,
+      prospect_id: prospect.id,
+      recommended_angle: suggestion.match_reason,
+      evidence: suggestion.source_url
+        ? [
+            {
+              claim: suggestion.match_reason ?? "Sourced during prospect discovery.",
+              source_url: suggestion.source_url,
+              confidence: "inference",
+            },
+          ]
+        : [],
+    }));
+
+  if (researchRows.length > 0) {
+    const { error: researchError } = await supabase
+      .from("prospect_research")
+      .insert(researchRows);
+    if (researchError) throw researchError;
+  }
 
   const { error: deleteError } = await supabase
     .from("prospect_suggestions")
@@ -133,7 +173,7 @@ export async function approveProspectSuggestions(
     .in("id", suggestionIds);
   if (deleteError) throw deleteError;
 
-  return inserted;
+  return inserted?.length ?? 0;
 }
 
 export async function discardProspectSuggestions(
