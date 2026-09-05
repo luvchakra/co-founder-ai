@@ -46,6 +46,26 @@
   --ring: oklch(0.556 0 0);
 }
 
+/*
+ * Marketing/auth-only dark palette (docs/CoFounderAI landing page requirements, "Suggested
+ * Visual Identity"): deep charcoal + electric violet accent, kept entirely separate from
+ * the dashboard's shadcn light/dark tokens above so the actual product UI is unaffected.
+ * Applied by wrapping marketing/auth page content in the .landing-theme class -- these
+ * variables (and the utility classes @theme inline generates from them, e.g. bg-landing-bg,
+ * text-landing-accent) only resolve inside that scope.
+ */
+.landing-theme {
+  --landing-bg: oklch(0.15 0.012 290);
+  --landing-bg-elevated: oklch(0.19 0.014 290);
+  --landing-surface: oklch(1 0 0 / 5%);
+  --landing-surface-border: oklch(1 0 0 / 10%);
+  --landing-fg: oklch(0.98 0.002 290);
+  --landing-muted: oklch(0.72 0.01 290);
+  --landing-accent: oklch(0.62 0.24 292);
+  --landing-accent-foreground: oklch(0.99 0 0);
+  --landing-accent-glow: oklch(0.62 0.24 292 / 35%);
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -71,6 +91,15 @@
   --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-landing-bg: var(--landing-bg);
+  --color-landing-bg-elevated: var(--landing-bg-elevated);
+  --color-landing-surface: var(--landing-surface);
+  --color-landing-surface-border: var(--landing-surface-border);
+  --color-landing-fg: var(--landing-fg);
+  --color-landing-muted: var(--landing-muted);
+  --color-landing-accent: var(--landing-accent);
+  --color-landing-accent-foreground: var(--landing-accent-foreground);
 }
 
 @layer base {
@@ -79,5 +108,31 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  /* Fine background grid texture ("Suggested Visual Identity" -- fine grid/background
+     texture), and the glow used around AI-related elements. Both driven by the same
+     --landing-accent-glow token rather than a hard-coded color. */
+  .landing-grid {
+    background-image:
+      linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+  .landing-glow {
+    box-shadow: 0 0 80px 10px var(--landing-accent-glow);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
