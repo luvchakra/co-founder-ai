@@ -36,10 +36,10 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-full flex-1 flex-col">
-        <header className="relative z-50 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-6">
-          <div className="flex items-center gap-2">
+        <header className="relative z-50 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4 sm:gap-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
             <SidebarToggle />
-            <Link href="/dashboard" className="font-semibold">
+            <Link href="/dashboard" className="shrink-0 font-semibold whitespace-nowrap">
               co-founder-ai
             </Link>
             {account ? (

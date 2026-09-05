@@ -119,6 +119,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* This is a single dark-themed product (no light mode) -- telling the browser that
+       explicitly is what actually themes chrome that CSS can't reach directly: a native
+       <select>'s open options popup, checkboxes/radios, and scrollbars. Without this
+       every native <select> here (prospects filters, status pickers) opens a
+       light-OS-styled popup no matter how the closed box itself is styled. */
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground;
   }

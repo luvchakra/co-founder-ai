@@ -21,6 +21,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   updateProspectAction,
@@ -305,17 +306,13 @@ export default async function ProspectDetailPage({
             action={updateProspectStatusAction.bind(null, businessId, productId, prospect.id)}
             className="flex items-center gap-2"
           >
-            <select
-              name="status"
-              defaultValue={prospect.status}
-              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
+            <Select name="status" defaultValue={prospect.status} className="w-auto">
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
               ))}
-            </select>
+            </Select>
             <SubmitButton size="sm" variant="outline" pendingText="Updating...">
               Update status
             </SubmitButton>
@@ -544,18 +541,14 @@ export default async function ProspectDetailPage({
           buttonProps={{ disabled: !research }}
         >
           {contacts.length > 0 ? (
-            <select
-              name="contactId"
-              defaultValue=""
-              className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
+            <Select name="contactId" defaultValue="" className="w-auto max-w-56">
               <option value="">No specific contact</option>
               {contacts.map((c) => (
                 <option key={c.id} value={c.id}>
                   {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.id}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : null}
         </AiActionForm>
 
