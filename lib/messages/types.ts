@@ -1,6 +1,6 @@
 export type MessageChannel = "email" | "linkedin" | "whatsapp";
 export type MessageDirection = "outbound" | "inbound";
-export type MessageStatus = "draft" | "approved" | "sent";
+export type MessageStatus = "draft" | "approved" | "sent" | "failed";
 export type MessageClassification =
   | "interested"
   | "not_interested"
@@ -23,6 +23,8 @@ export type Message = {
   classification: MessageClassification | null;
   recommended_action: string | null;
   sent_at: string | null;
+  failure_reason: string | null;
+  provider_message_id: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -16,6 +16,7 @@ import {
   markMessageSent,
   deleteMessage,
 } from "@/lib/messages/mutations";
+import { sendMessage } from "@/lib/messages/send";
 import { closeConversation } from "@/lib/conversations/mutations";
 import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
@@ -164,6 +165,39 @@ export async function markMessageSentAction(
 ) {
   await markMessageSent(messageId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+/** Email-channel "Approve" (docs/prospects-pipeline-redesign-requirements.md R1) --
+ * approving an email message sends it immediately via lib/messages/send.ts instead of
+ * waiting for a separate manual "Mark sent" click. A pre-flight failure (no contact
+ * email, sending not configured) surfaces through AiActionState rather than throwing,
+ * same as the AI actions above; a real provider-side send failure is recorded on the
+ * message row itself (status 'failed') and read back on revalidate, not thrown here. */
+export async function approveAndSendMessageAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await approveMessage(messageId);
+    await sendMessage(messageId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
+}
+
+/** Retries sending an already-approved (or previously failed) email message -- R2's
+ * "Retry" action. */
+export async function sendMessageAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  messageId: string,
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    await sendMessage(messageId);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
 
 export async function deleteMessageAction(

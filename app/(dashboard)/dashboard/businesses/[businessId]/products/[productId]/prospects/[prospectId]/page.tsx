@@ -33,6 +33,8 @@ import {
   generateMessageAction,
   updateMessageContentAction,
   approveMessageAction,
+  approveAndSendMessageAction,
+  sendMessageAction,
   markMessageSentAction,
   deleteMessageAction,
   generateReplyAction,
@@ -52,6 +54,7 @@ const MESSAGE_STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
   approved: "Approved",
   sent: "Sent",
+  failed: "Failed",
 };
 
 const CONVERSATION_STATUS_LABEL: Record<string, string> = {
@@ -75,12 +78,19 @@ function OutboundMessageCard({
   businessId,
   productId,
   prospectId,
+  hasContactEmail,
 }: {
   message: Message;
   businessId: string;
   productId: string;
   prospectId: string;
+  /** Whether this prospect has any contact with an email on file -- gates sending for
+   * the email channel (docs/prospects-pipeline-redesign-requirements.md R1: "no contact
+   * email -> block Send with an inline prompt to add one"). */
+  hasContactEmail: boolean;
 }) {
+  const isEmail = message.channel === "email";
+
   return (
     <li className="flex flex-col gap-2 rounded-md border p-3 text-sm">
       <div className="flex items-center justify-between">
@@ -119,36 +129,86 @@ function OutboundMessageCard({
         ) : null}
       </form>
 
-      <div className="flex items-center gap-2">
-        {message.status === "draft" ? (
-          <form
-            action={approveMessageAction.bind(null, businessId, productId, prospectId, message.id)}
-          >
-            <SubmitButton size="sm" pendingText="Approving...">
-              Approve
-            </SubmitButton>
-          </form>
-        ) : null}
-        {message.status === "approved" ? (
-          <form
-            action={markMessageSentAction.bind(
-              null,
-              businessId,
-              productId,
-              prospectId,
-              message.id,
-            )}
-          >
-            <SubmitButton size="sm" pendingText="Marking sent...">
-              Mark sent
-            </SubmitButton>
-          </form>
-        ) : null}
-        {message.status === "sent" && message.sent_at ? (
-          <span className="text-xs text-muted-foreground">
-            Sent {new Date(message.sent_at).toLocaleString()}
-          </span>
-        ) : null}
+      {isEmail && !hasContactEmail && message.status !== "sent" ? (
+        <p className="text-xs text-muted-foreground">
+          Add a contact with an email below before this can be sent.
+        </p>
+      ) : null}
+
+      <div className="flex flex-col items-start gap-2">
+        {isEmail ? (
+          <>
+            {message.status === "draft" && hasContactEmail ? (
+              <AiActionForm
+                action={approveAndSendMessageAction.bind(
+                  null,
+                  businessId,
+                  productId,
+                  prospectId,
+                  message.id,
+                )}
+                buttonLabel="Approve & send"
+                pendingText="Sending..."
+              />
+            ) : null}
+            {(message.status === "approved" || message.status === "failed") &&
+            hasContactEmail ? (
+              <AiActionForm
+                action={sendMessageAction.bind(null, businessId, productId, prospectId, message.id)}
+                buttonLabel={message.status === "failed" ? "Retry send" : "Send"}
+                pendingText="Sending..."
+              />
+            ) : null}
+            {message.status === "failed" && message.failure_reason ? (
+              <p role="alert" className="text-xs text-destructive">
+                Send failed: {message.failure_reason}
+              </p>
+            ) : null}
+            {message.status === "sent" && message.sent_at ? (
+              <span className="text-xs text-muted-foreground">
+                Sent {new Date(message.sent_at).toLocaleString()}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          <>
+            {message.status === "draft" ? (
+              <form
+                action={approveMessageAction.bind(
+                  null,
+                  businessId,
+                  productId,
+                  prospectId,
+                  message.id,
+                )}
+              >
+                <SubmitButton size="sm" pendingText="Approving...">
+                  Approve
+                </SubmitButton>
+              </form>
+            ) : null}
+            {message.status === "approved" ? (
+              <form
+                action={markMessageSentAction.bind(
+                  null,
+                  businessId,
+                  productId,
+                  prospectId,
+                  message.id,
+                )}
+              >
+                <SubmitButton size="sm" pendingText="Marking sent...">
+                  Mark sent
+                </SubmitButton>
+              </form>
+            ) : null}
+            {message.status === "sent" && message.sent_at ? (
+              <span className="text-xs text-muted-foreground">
+                Sent {new Date(message.sent_at).toLocaleString()}
+              </span>
+            ) : null}
+          </>
+        )}
       </div>
     </li>
   );
@@ -180,6 +240,7 @@ export default async function ProspectDetailPage({
       getRecentOperationCost(workspace.id, "research_prospect"),
     ]);
   const drafts = messages.filter((m) => !m.conversation_id);
+  const hasContactEmail = contacts.some((c) => c.email);
   const threadForConversation = (conversationId: string) =>
     messages
       .filter((m) => m.conversation_id === conversationId)
@@ -195,6 +256,7 @@ export default async function ProspectDetailPage({
     hasScore: score !== null,
     latestStrategyStatus: strategy?.status ?? null,
     hasUnsentMessage: drafts.length > 0,
+    hasFailedMessage: messages.some((m) => m.status === "failed"),
     hasSentMessage: messages.some((m) => m.status === "sent"),
     latestConversationStatus: latestConversation?.status ?? null,
     lastActivityAt: latestTimestamp(
@@ -512,6 +574,7 @@ export default async function ProspectDetailPage({
                 businessId={businessId}
                 productId={productId}
                 prospectId={prospect.id}
+                hasContactEmail={hasContactEmail}
               />
             ))}
           </ul>
@@ -583,6 +646,7 @@ export default async function ProspectDetailPage({
                         businessId={businessId}
                         productId={productId}
                         prospectId={prospect.id}
+                        hasContactEmail={hasContactEmail}
                       />
                     ),
                   )}

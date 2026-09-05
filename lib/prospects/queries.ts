@@ -28,7 +28,11 @@ type ProspectPipelineRow = Prospect & {
   prospect_research: { researched_at: string } | null;
   prospect_scores: { created_at: string } | null;
   outreach_strategies: { status: "draft" | "approved"; updated_at: string }[];
-  messages: { status: "draft" | "approved" | "sent"; created_at: string; sent_at: string | null }[];
+  messages: {
+    status: "draft" | "approved" | "sent" | "failed";
+    created_at: string;
+    sent_at: string | null;
+  }[];
   conversations: { status: "awaiting_reply" | "replied" | "closed"; last_message_at: string }[];
 };
 
@@ -49,6 +53,7 @@ function deriveRow(row: ProspectPipelineRow): ProspectWithPipeline {
     hasScore: row.prospect_scores !== null,
     latestStrategyStatus: latestStrategy?.status ?? null,
     hasUnsentMessage: row.messages.some((m) => m.status !== "sent"),
+    hasFailedMessage: row.messages.some((m) => m.status === "failed"),
     hasSentMessage: row.messages.some((m) => m.status === "sent"),
     latestConversationStatus: latestConversation?.status ?? null,
     lastActivityAt: latestTimestamp(

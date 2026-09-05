@@ -42,6 +42,7 @@ export type ProspectPipelineSignals = {
   hasScore: boolean;
   latestStrategyStatus: OutreachStrategyStatus | null;
   hasUnsentMessage: boolean;
+  hasFailedMessage: boolean;
   hasSentMessage: boolean;
   latestConversationStatus: ConversationStatus | null;
   /** Most recent timestamp across the prospect row and every child table below --
@@ -67,6 +68,7 @@ export function deriveProspectPipelineState(
     hasScore,
     latestStrategyStatus,
     hasUnsentMessage,
+    hasFailedMessage,
     hasSentMessage,
     latestConversationStatus,
     lastActivityAt,
@@ -86,7 +88,7 @@ export function deriveProspectPipelineState(
     nextAction = null;
   } else if (hasUnsentMessage) {
     stage = "messaged";
-    nextAction = "Review message";
+    nextAction = hasFailedMessage ? "Retry send" : "Review message";
   } else if (latestStrategyStatus === "approved") {
     stage = "strategized";
     nextAction = "Generate message";
