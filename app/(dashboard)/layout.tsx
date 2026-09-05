@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccount, listBusinesses, listProducts } from "@/lib/tenancy/queries";
 import type { Product } from "@/lib/tenancy/types";
 import { signOut } from "@/app/(auth)/actions";
-import { SubmitButton } from "@/components/ui/submit-button";
+import { createBusinessAction } from "@/app/(dashboard)/dashboard/actions";
 import { Sidebar } from "@/components/tenancy/sidebar";
+import { BusinessSelector } from "@/components/tenancy/business-selector";
+import { UserMenu } from "@/components/tenancy/user-menu";
 
 export default async function DashboardLayout({
   children,
@@ -25,23 +27,30 @@ export default async function DashboardLayout({
     productsByBusiness[business.id] = await listProducts(business.id);
   }
 
+  const metadata = user.user_metadata ?? {};
+  const displayName = (metadata.full_name || metadata.name || null) as string | null;
+  const avatarUrl = (metadata.avatar_url || metadata.picture || null) as string | null;
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <Link href="/dashboard" className="font-semibold">
-          co-founder-ai
-        </Link>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {account ? <span>{account.name}</span> : null}
-          <Link href="/dashboard/settings/ai-provider" className="hover:underline">
-            AI Provider
+      <header className="flex items-center justify-between gap-4 border-b px-6 py-3">
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="font-semibold">
+            co-founder-ai
           </Link>
-          <form action={signOut}>
-            <SubmitButton variant="ghost" size="sm" pendingText="Signing out...">
-              Sign out
-            </SubmitButton>
-          </form>
+          {account ? (
+            <BusinessSelector
+              businesses={businesses}
+              createBusinessAction={createBusinessAction.bind(null, account.id)}
+            />
+          ) : null}
         </div>
+        <UserMenu
+          name={displayName}
+          email={user.email ?? ""}
+          avatarUrl={avatarUrl}
+          signOutAction={signOut}
+        />
       </header>
       <div className="flex flex-1">
         <Sidebar businesses={businesses} productsByBusiness={productsByBusiness} />
