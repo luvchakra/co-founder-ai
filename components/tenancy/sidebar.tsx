@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
 import type { Business, Product } from "@/lib/tenancy/types";
 
 /**
@@ -20,8 +21,8 @@ export function Sidebar({
   productsByBusiness: Record<string, Product[]>;
 }) {
   const pathname = usePathname();
-  const activeBusinessId = pathname.match(/\/dashboard\/businesses\/([^/]+)/)?.[1] ?? null;
-  const activeProductId = pathname.match(/\/products\/([^/]+)/)?.[1] ?? null;
+  const { businessId: activeBusinessId, productId: activeProductId } =
+    getActiveIdsFromPath(pathname);
 
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(activeBusinessId ? [activeBusinessId] : []),
