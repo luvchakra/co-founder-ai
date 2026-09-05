@@ -98,3 +98,22 @@ export async function getWorkspace(workspaceId: string): Promise<Workspace | nul
   if (error) throw error;
   return data;
 }
+
+/**
+ * workspace -> product -> business -> account_id. Three sequential queries rather than a
+ * nested PostgREST embed, matching this file's existing style. Used by the BYOK AI router
+ * (lib/ai/router.ts) to find which account's provider credential should serve a
+ * workspace-scoped AI operation.
+ */
+export async function getAccountIdForWorkspace(workspaceId: string): Promise<string | null> {
+  const workspace = await getWorkspace(workspaceId);
+  if (!workspace) return null;
+
+  const product = await getProduct(workspace.product_id);
+  if (!product) return null;
+
+  const business = await getBusiness(product.business_id);
+  if (!business) return null;
+
+  return business.account_id;
+}
