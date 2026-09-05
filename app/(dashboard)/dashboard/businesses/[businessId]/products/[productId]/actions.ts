@@ -38,6 +38,44 @@ export async function renameProductAction(
   return { success: true };
 }
 
+export async function updateProductDescriptionAction(
+  businessId: string,
+  productId: string,
+  _prevState: RenameActionState,
+  formData: FormData,
+): Promise<RenameActionState> {
+  const description = String(formData.get("value") ?? "");
+
+  try {
+    await updateProduct(productId, { description });
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : "Something went wrong." };
+  }
+
+  revalidatePath(productPath(businessId, productId));
+  return { success: true };
+}
+
+export async function updateProductWebsiteAction(
+  businessId: string,
+  productId: string,
+  _prevState: RenameActionState,
+  formData: FormData,
+): Promise<RenameActionState> {
+  const website = String(formData.get("value") ?? "");
+
+  try {
+    await updateProduct(productId, { website });
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : "Something went wrong." };
+  }
+
+  revalidatePath(productPath(businessId, productId));
+  return { success: true };
+}
+
 export async function addManualSourceAction(
   businessId: string,
   productId: string,

@@ -6,13 +6,14 @@ import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { EditableName } from "@/components/tenancy/editable-name";
+import { EditableText } from "@/components/tenancy/editable-text";
 import {
   addManualSourceAction,
   addWebsiteSourceAction,
   deleteSourceAction,
   generateProductProfileAction,
-  renameProductAction,
+  updateProductDescriptionAction,
+  updateProductWebsiteAction,
 } from "./actions";
 
 function truncate(text: string, max: number) {
@@ -36,11 +37,21 @@ export default async function ProductPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <EditableName
-        name={product.name}
-        action={renameProductAction.bind(null, businessId, productId)}
-        headingClassName="text-xl font-semibold"
-      />
+      <section className="flex flex-col gap-2">
+        <EditableText
+          value={product.description}
+          action={updateProductDescriptionAction.bind(null, businessId, productId)}
+          placeholder="Add a description for this product"
+          multiline
+          textClassName="text-sm text-muted-foreground"
+        />
+        <EditableText
+          value={product.website}
+          action={updateProductWebsiteAction.bind(null, businessId, productId)}
+          placeholder="Add a website"
+          textClassName="text-sm"
+        />
+      </section>
 
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
@@ -177,7 +188,7 @@ export default async function ProductPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="content">What does this product do?</Label>
-              <Textarea id="content" name="content" rows={2} required />
+              <Textarea id="content" name="content" rows={1} required />
             </div>
             <SubmitButton size="sm" className="self-start" pendingText="Adding...">
               Add

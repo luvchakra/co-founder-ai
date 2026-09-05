@@ -32,17 +32,26 @@ export async function createBusiness(
   return data;
 }
 
+/** Only the fields actually passed are updated -- callers each submit one field at a
+ * time (the inline rename/edit controls each own a single input), never the whole row. */
 export async function updateBusiness(
   businessId: string,
-  input: { name: string },
+  input: { name?: string; description?: string },
 ): Promise<Business> {
-  const name = input.name.trim();
-  if (!name) throw new Error("Business name is required.");
+  const patch: Record<string, string | null> = {};
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) throw new Error("Business name is required.");
+    patch.name = name;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || null;
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("businesses")
-    .update({ name })
+    .update(patch)
     .eq("id", businessId)
     .select()
     .single();
@@ -72,17 +81,28 @@ export async function createProduct(
   return data;
 }
 
+/** Only the fields actually passed are updated -- see updateBusiness's docstring. */
 export async function updateProduct(
   productId: string,
-  input: { name: string },
+  input: { name?: string; description?: string; website?: string },
 ): Promise<Product> {
-  const name = input.name.trim();
-  if (!name) throw new Error("Product name is required.");
+  const patch: Record<string, string | null> = {};
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) throw new Error("Product name is required.");
+    patch.name = name;
+  }
+  if (input.description !== undefined) {
+    patch.description = input.description.trim() || null;
+  }
+  if (input.website !== undefined) {
+    patch.website = input.website.trim() || null;
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .update({ name })
+    .update(patch)
     .eq("id", productId)
     .select()
     .single();

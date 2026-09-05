@@ -24,3 +24,21 @@ export async function renameBusinessAction(
   revalidatePath("/dashboard"); // sidebar and header business selector also show the name
   return { success: true };
 }
+
+export async function updateBusinessDescriptionAction(
+  businessId: string,
+  _prevState: RenameActionState,
+  formData: FormData,
+): Promise<RenameActionState> {
+  const description = String(formData.get("value") ?? "");
+
+  try {
+    await updateBusiness(businessId, { description });
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : "Something went wrong." };
+  }
+
+  revalidatePath(`/dashboard/businesses/${businessId}`);
+  return { success: true };
+}
