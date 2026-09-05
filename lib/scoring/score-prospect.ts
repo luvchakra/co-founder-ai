@@ -15,7 +15,7 @@ import type { ProspectScore } from "./types";
  * from counting signals a prior researchProspect() run already extracted -- scoring
  * itself doesn't call the model.
  */
-const WEIGHTS = { icp: 0.5, intent: 0.25, timing: 0.25 };
+export const WEIGHTS = { icp: 0.5, intent: 0.25, timing: 0.25 };
 
 function fuzzyIncludes(haystack: string[], needle: string | null): boolean {
   if (!needle) return false;
@@ -86,18 +86,18 @@ export async function scoreProspect(prospectId: string): Promise<ProspectScore> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("prospect_scores")
-    .upsert(
-      {
-        workspace_id: workspace.id,
-        prospect_id: prospect.id,
-        icp_score: icpScore,
-        intent_score: intentScore,
-        timing_score: timingScore,
-        overall_score: overallScore,
-        reasoning: reasoning.join("\n"),
-      },
-      { onConflict: "prospect_id" },
-    )
+    // Append-only (docs/prospects-pipeline-redesign-requirements.md R8) -- a rescore is
+    // a new row, not an overwrite, so getProspectScore's "latest" and the detail page's
+    // previous-vs-current trend both have something to read.
+    .insert({
+      workspace_id: workspace.id,
+      prospect_id: prospect.id,
+      icp_score: icpScore,
+      intent_score: intentScore,
+      timing_score: timingScore,
+      overall_score: overallScore,
+      reasoning: reasoning.join("\n"),
+    })
     .select()
     .single();
   if (error) throw error;

@@ -9,6 +9,9 @@ export type ProspectInput = {
   companySize?: string;
   location?: string;
   description?: string;
+  linkedinUrl?: string;
+  twitterUrl?: string;
+  companyEmail?: string;
 };
 
 export function extractDomain(url: string): string | null {
@@ -31,6 +34,9 @@ function toRow(input: ProspectInput) {
     company_size: input.companySize?.trim() || null,
     location: input.location?.trim() || null,
     description: input.description?.trim() || null,
+    linkedin_url: input.linkedinUrl?.trim() ? normalizeUrl(input.linkedinUrl) : null,
+    twitter_url: input.twitterUrl?.trim() ? normalizeUrl(input.twitterUrl) : null,
+    company_email: input.companyEmail?.trim() || null,
   };
 }
 

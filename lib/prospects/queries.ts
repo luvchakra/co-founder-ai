@@ -20,13 +20,13 @@ export type ProspectFilters = {
 export type ProspectSort = "recent" | "stage" | "priority";
 
 /** Row shape after embedding the child tables listProspects joins for pipeline state --
- * prospect_research/prospect_scores are `unique` on prospect_id (schema-enforced
- * one-to-one) so PostgREST embeds them as a single object; outreach_strategies/
- * messages/conversations aren't, so those come back as arrays and the latest one is
- * picked in deriveRow below. */
+ * prospect_research is `unique` on prospect_id (schema-enforced one-to-one) so
+ * PostgREST embeds it as a single object; prospect_scores is append-only (R8, no
+ * longer unique) and outreach_strategies/messages/conversations never were, so all four
+ * come back as arrays and the latest one is picked in deriveRow below. */
 type ProspectPipelineRow = Prospect & {
   prospect_research: { researched_at: string } | null;
-  prospect_scores: { created_at: string } | null;
+  prospect_scores: { created_at: string }[];
   outreach_strategies: { status: "draft" | "approved"; updated_at: string }[];
   messages: {
     status: "draft" | "approved" | "sent" | "failed";
@@ -44,13 +44,14 @@ function latestBy<T>(rows: T[], key: keyof T): T | null {
 }
 
 function deriveRow(row: ProspectPipelineRow): ProspectWithPipeline {
+  const latestScore = latestBy(row.prospect_scores, "created_at");
   const latestStrategy = latestBy(row.outreach_strategies, "updated_at");
   const latestMessage = latestBy(row.messages, "created_at");
   const latestConversation = latestBy(row.conversations, "last_message_at");
 
   const state = deriveProspectPipelineState({
     hasResearch: row.prospect_research !== null,
-    hasScore: row.prospect_scores !== null,
+    hasScore: latestScore !== null,
     latestStrategyStatus: latestStrategy?.status ?? null,
     hasUnsentMessage: row.messages.some((m) => m.status !== "sent"),
     hasFailedMessage: row.messages.some((m) => m.status === "failed"),
@@ -59,7 +60,7 @@ function deriveRow(row: ProspectPipelineRow): ProspectWithPipeline {
     lastActivityAt: latestTimestamp(
       row.updated_at,
       row.prospect_research?.researched_at,
-      row.prospect_scores?.created_at,
+      latestScore?.created_at,
       latestStrategy?.updated_at,
       latestMessage?.created_at,
       latestMessage?.sent_at,

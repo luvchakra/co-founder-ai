@@ -37,6 +37,9 @@ export async function updateProspectAction(
     companySize: String(formData.get("companySize") ?? ""),
     location: String(formData.get("location") ?? ""),
     description: String(formData.get("description") ?? ""),
+    linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
+    twitterUrl: String(formData.get("twitterUrl") ?? ""),
+    companyEmail: String(formData.get("companyEmail") ?? ""),
   });
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }

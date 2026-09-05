@@ -12,6 +12,9 @@ export type Prospect = {
   description: string | null;
   status: ProspectStatus;
   fit_score: number | null;
+  linkedin_url: string | null;
+  twitter_url: string | null;
+  company_email: string | null;
   created_at: string;
   updated_at: string;
 };

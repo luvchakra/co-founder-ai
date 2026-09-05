@@ -4,7 +4,8 @@ import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getProspect } from "@/lib/prospects/queries";
 import { listContacts } from "@/lib/contacts/queries";
 import { getProspectResearch } from "@/lib/research/queries";
-import { getProspectScore } from "@/lib/scoring/queries";
+import { listRecentProspectScores } from "@/lib/scoring/queries";
+import { WEIGHTS as SCORE_WEIGHTS } from "@/lib/scoring/score-prospect";
 import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
 import { listMessages } from "@/lib/messages/queries";
 import { getRecentOperationCost } from "@/lib/usage/queries";
@@ -232,16 +233,18 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const [contacts, research, score, strategy, messages, conversations, researchCostSample] =
+  const [contacts, research, scores, strategy, messages, conversations, researchCostSample] =
     await Promise.all([
       listContacts(prospect.id),
       getProspectResearch(prospect.id),
-      getProspectScore(prospect.id),
+      listRecentProspectScores(prospect.id),
       getLatestOutreachStrategy(prospect.id),
       listMessages(prospect.id),
       listConversations(prospect.id),
       getRecentOperationCost(workspace.id, "research_prospect"),
     ]);
+  const score = scores[0] ?? null;
+  const previousScore = scores[1] ?? null;
   const drafts = messages.filter((m) => !m.conversation_id);
   const hasContactEmail = contacts.some((c) => c.email);
   const threadForConversation = (conversationId: string) =>
@@ -357,6 +360,33 @@ export default async function ProspectDetailPage({
             <Label htmlFor="location">Location</Label>
             <Input id="location" name="location" defaultValue={prospect.location ?? ""} />
           </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="linkedinUrl">Company LinkedIn</Label>
+            <Input
+              id="linkedinUrl"
+              name="linkedinUrl"
+              type="text"
+              defaultValue={prospect.linkedin_url ?? ""}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="twitterUrl">Company X/Twitter</Label>
+            <Input
+              id="twitterUrl"
+              name="twitterUrl"
+              type="text"
+              defaultValue={prospect.twitter_url ?? ""}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="companyEmail">General company email</Label>
+            <Input
+              id="companyEmail"
+              name="companyEmail"
+              type="email"
+              defaultValue={prospect.company_email ?? ""}
+            />
+          </div>
           <div className="flex flex-col gap-1.5 sm:col-span-2">
             <Label htmlFor="description">Description</Label>
             <Input
@@ -464,10 +494,28 @@ export default async function ProspectDetailPage({
           </p>
         ) : (
           <div className="flex flex-col gap-2 text-sm">
-            <p className="text-2xl font-semibold">{score.overall_score}</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-2xl font-semibold">{score.overall_score}</p>
+              {previousScore && previousScore.overall_score !== score.overall_score ? (
+                <span
+                  className={
+                    score.overall_score > previousScore.overall_score
+                      ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                      : "text-xs font-medium text-amber-600 dark:text-amber-400"
+                  }
+                >
+                  {score.overall_score > previousScore.overall_score ? "▲" : "▼"}{" "}
+                  {Math.abs(score.overall_score - previousScore.overall_score)} since last score (
+                  {previousScore.overall_score})
+                </span>
+              ) : previousScore ? (
+                <span className="text-xs text-muted-foreground">No change since last score</span>
+              ) : null}
+            </div>
             <p className="text-muted-foreground">
-              ICP fit {score.icp_score} · Intent {score.intent_score} · Timing{" "}
-              {score.timing_score}
+              ICP fit {score.icp_score} ({SCORE_WEIGHTS.icp * 100}%) · Intent{" "}
+              {score.intent_score} ({SCORE_WEIGHTS.intent * 100}%) · Timing {score.timing_score} (
+              {SCORE_WEIGHTS.timing * 100}%)
             </p>
             {score.reasoning ? (
               <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
