@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProductKnowledge } from "@/lib/knowledge/queries";
@@ -6,12 +6,12 @@ import {
   understandProductPrompt,
   UNDERSTAND_PRODUCT_PROMPT_VERSION,
 } from "@/prompts/product/understand_product_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ProductProfileSchema, type ProductProfile } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
 import { hasRecentSuccess } from "./dedup";
+import { resolveAiModel, toAiProviderError } from "./router";
 
 const OPERATION = "understand_product";
 
@@ -62,50 +62,59 @@ export async function understandProduct(
       content: s.content,
     })),
   });
-  const inputHash = hashInput({ prompt, version: UNDERSTAND_PRODUCT_PROMPT_VERSION });
-  const model = AI_MODELS.balanced;
+
+  const { accountId, provider, modelId, model } = await resolveAiModel(workspace.id, OPERATION);
+  const inputHash = hashInput({
+    prompt,
+    version: UNDERSTAND_PRODUCT_PROMPT_VERSION,
+    model: modelId,
+  });
 
   // Guards the force-regenerate path specifically -- the freshness check above already
   // covers everything else, but "Regenerate" intentionally bypasses it, so a double-click
   // there would otherwise re-bill for identical input every time.
-  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash)) {
+  if (await hasRecentSuccess(workspace.id, OPERATION, inputHash, undefined, modelId)) {
     if (product.product_profile) return product.product_profile;
   }
 
   let profile: ProductProfile;
+  const startedAt = Date.now();
   try {
-    const response = await anthropic.messages.parse({
+    const response = await generateObject({
       model,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(ProductProfileSchema) },
+      schema: ProductProfileSchema,
+      prompt,
     });
-
-    if (!response.parsed_output) {
-      throw new Error("Model did not return a valid product profile.");
-    }
-    profile = response.parsed_output;
+    profile = response.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: UNDERSTAND_PRODUCT_PROMPT_VERSION,
       inputHash,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
       status: "succeeded",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: UNDERSTAND_PRODUCT_PROMPT_VERSION,
       inputHash,
       status: "failed",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 
   const supabase = await createClient();

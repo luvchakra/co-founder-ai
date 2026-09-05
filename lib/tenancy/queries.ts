@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { Account, Business, Product, Workspace } from "./types";
 
@@ -43,8 +44,11 @@ export async function listBusinesses(accountId: string): Promise<Business[]> {
   return data;
 }
 
-export async function getBusiness(businessId: string): Promise<Business | null> {
-  const supabase = await createClient();
+export async function getBusiness(
+  businessId: string,
+  client?: SupabaseClient,
+): Promise<Business | null> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("businesses")
     .select("*")
@@ -65,8 +69,11 @@ export async function listProducts(businessId: string): Promise<Product[]> {
   return data;
 }
 
-export async function getProduct(productId: string): Promise<Product | null> {
-  const supabase = await createClient();
+export async function getProduct(
+  productId: string,
+  client?: SupabaseClient,
+): Promise<Product | null> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("products")
     .select("*")
@@ -88,8 +95,11 @@ export async function getWorkspaceForProduct(productId: string): Promise<Workspa
   return data;
 }
 
-export async function getWorkspace(workspaceId: string): Promise<Workspace | null> {
-  const supabase = await createClient();
+export async function getWorkspace(
+  workspaceId: string,
+  client?: SupabaseClient,
+): Promise<Workspace | null> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("workspaces")
     .select("*")
@@ -104,15 +114,22 @@ export async function getWorkspace(workspaceId: string): Promise<Workspace | nul
  * nested PostgREST embed, matching this file's existing style. Used by the BYOK AI router
  * (lib/ai/router.ts) to find which account's provider credential should serve a
  * workspace-scoped AI operation.
+ *
+ * Pass `client` (the admin client) for callers with no logged-in user, e.g.
+ * classifyReply's usage from the inbound email webhook -- without it, the RLS-scoped
+ * client would see zero rows for a request that has no authenticated session.
  */
-export async function getAccountIdForWorkspace(workspaceId: string): Promise<string | null> {
-  const workspace = await getWorkspace(workspaceId);
+export async function getAccountIdForWorkspace(
+  workspaceId: string,
+  client?: SupabaseClient,
+): Promise<string | null> {
+  const workspace = await getWorkspace(workspaceId, client);
   if (!workspace) return null;
 
-  const product = await getProduct(workspace.product_id);
+  const product = await getProduct(workspace.product_id, client);
   if (!product) return null;
 
-  const business = await getBusiness(product.business_id);
+  const business = await getBusiness(product.business_id, client);
   if (!business) return null;
 
   return business.account_id;

@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
@@ -7,12 +7,12 @@ import {
   generateIcpPrompt,
   GENERATE_ICP_PROMPT_VERSION,
 } from "@/prompts/icp/generate_icp_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { IcpProfileSchema, type IcpProfileDraft } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
 import { hasRecentSuccess } from "./dedup";
+import { resolveAiModel, toAiProviderError } from "./router";
 
 const OPERATION = "generate_icp";
 
@@ -46,49 +46,54 @@ export async function generateIcp(
     productName: product.name,
     profile: product.product_profile,
   });
-  const inputHash = hashInput({ prompt, version: GENERATE_ICP_PROMPT_VERSION });
-  const model = AI_MODELS.balanced;
+
+  const { accountId, provider, modelId, model } = await resolveAiModel(workspace.id, OPERATION);
+  const inputHash = hashInput({ prompt, version: GENERATE_ICP_PROMPT_VERSION, model: modelId });
 
   // Guards the force-regenerate path -- a double-click on "Regenerate" with nothing
   // changed would otherwise re-bill for identical input every time.
-  if (existing && (await hasRecentSuccess(workspace.id, OPERATION, inputHash))) {
+  if (existing && (await hasRecentSuccess(workspace.id, OPERATION, inputHash, undefined, modelId))) {
     return existing;
   }
 
   let draft: IcpProfileDraft;
+  const startedAt = Date.now();
   try {
-    const response = await anthropic.messages.parse({
+    const response = await generateObject({
       model,
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(IcpProfileSchema) },
+      schema: IcpProfileSchema,
+      prompt,
     });
-
-    if (!response.parsed_output) {
-      throw new Error("Model did not return a valid ICP.");
-    }
-    draft = response.parsed_output;
+    draft = response.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_ICP_PROMPT_VERSION,
       inputHash,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
       status: "succeeded",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_ICP_PROMPT_VERSION,
       inputHash,
       status: "failed",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 
   const supabase = await createClient();

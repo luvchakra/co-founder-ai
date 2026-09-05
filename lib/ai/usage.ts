@@ -24,6 +24,14 @@ export async function recordAiRun(input: {
   searchCount?: number;
   status: "succeeded" | "failed";
   client?: SupabaseClient;
+  /** BYOK fields (docs/byok-ai-requirements.md §12) -- which account's own provider key
+   * was billed, which provider actually served the request, how long it took, and a
+   * machine-readable failure code (AiErrorCode from lib/ai/router.ts). Optional so
+   * operations not yet routed through the BYOK router keep working unchanged. */
+  accountId?: string;
+  provider?: string;
+  durationMs?: number;
+  errorCode?: string;
 }) {
   const supabase = input.client ?? (await createClient());
   const estimatedCost =
@@ -42,6 +50,10 @@ export async function recordAiRun(input: {
     search_count: input.searchCount ?? null,
     estimated_cost: estimatedCost,
     status: input.status,
+    account_id: input.accountId ?? null,
+    provider: input.provider ?? null,
+    duration_ms: input.durationMs ?? null,
+    error_code: input.errorCode ?? null,
   });
 
   if (error) {

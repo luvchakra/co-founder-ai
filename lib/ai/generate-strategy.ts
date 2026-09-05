@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getProspect } from "@/lib/prospects/queries";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
@@ -11,19 +11,20 @@ import {
   generateStrategyPrompt,
   GENERATE_STRATEGY_PROMPT_VERSION,
 } from "@/prompts/outreach/generate_strategy_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { OutreachStrategySchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { resolveAiModel, toAiProviderError } from "./router";
 
 const OPERATION = "generate_outreach_strategy";
 
 /**
  * Requires the pipeline blueprint §18 assumes: approved product profile -> approved ICP
- * -> prospect research. Uses AI_MODELS.reasoning (not balanced/fast) because strategy
- * synthesis -- tying research evidence to a specific angle and CTA -- is exactly the case
- * blueprint §11 calls out for the strongest model, unlike extraction/classification.
+ * -> prospect research. Routed through the AI router at the "reasoning" quality tier
+ * (lib/ai/operation-registry.ts) because strategy synthesis -- tying research evidence
+ * to a specific angle and CTA -- is exactly the case blueprint §11 calls out for the
+ * strongest model, unlike extraction/classification.
  */
 export async function generateOutreachStrategy(
   prospectId: string,
@@ -75,30 +76,35 @@ export async function generateOutreachStrategy(
     score,
     contact,
   });
-  const inputHash = hashInput({ prompt, version: GENERATE_STRATEGY_PROMPT_VERSION });
-  const model = AI_MODELS.reasoning;
 
+  const { accountId, provider, modelId, model } = await resolveAiModel(workspace.id, OPERATION);
+  const inputHash = hashInput({
+    prompt,
+    version: GENERATE_STRATEGY_PROMPT_VERSION,
+    model: modelId,
+  });
+
+  const startedAt = Date.now();
   try {
-    const response = await anthropic.messages.parse({
+    const response = await generateObject({
       model,
-      max_tokens: 2048,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(OutreachStrategySchema) },
+      schema: OutreachStrategySchema,
+      prompt,
     });
-    if (!response.parsed_output) {
-      throw new Error("Model did not return a valid strategy.");
-    }
-    const draft = response.parsed_output;
+    const draft = response.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_STRATEGY_PROMPT_VERSION,
       inputHash,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
       status: "succeeded",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
 
     const { data, error } = await supabase
@@ -119,14 +125,19 @@ export async function generateOutreachStrategy(
     if (error) throw error;
     return data;
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_STRATEGY_PROMPT_VERSION,
       inputHash,
       status: "failed",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 }

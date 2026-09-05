@@ -1,15 +1,15 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject } from "ai";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Message } from "@/lib/messages/types";
 import {
   classifyReplyPrompt,
   CLASSIFY_REPLY_PROMPT_VERSION,
 } from "@/prompts/outreach/classify_reply_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { ReplyClassificationSchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { resolveAiModel, toAiProviderError } from "./router";
 
 const OPERATION = "classify_reply";
 
@@ -17,8 +17,10 @@ const OPERATION = "classify_reply";
  * Classifies an inbound reply and stores the classification + a recommended next step
  * directly on the message row. Runs on the admin client -- its only caller is the
  * inbound-email webhook (lib/conversations/ingest-inbound-email.ts), which has no user
- * session for RLS to key off of. Uses the fast model tier (blueprint's "cheap model
- * first") since classification is a small, low-stakes task.
+ * session for RLS to key off of -- so the admin client is threaded into every lookup,
+ * including the AI router's own account/credential resolution (resolveAiModel's `client`
+ * param). Uses the "fast" quality tier (lib/ai/operation-registry.ts) since
+ * classification is a small, low-stakes task.
  */
 export async function classifyReply(messageId: string): Promise<Message> {
   const admin = createAdminClient();
@@ -50,29 +52,36 @@ export async function classifyReply(messageId: string): Promise<Message> {
   await assertWithinUsageLimit(workspace.id, admin);
 
   const prompt = classifyReplyPrompt({ productName: product.name, replyContent: message.content });
-  const inputHash = hashInput({ prompt, version: CLASSIFY_REPLY_PROMPT_VERSION });
-  const model = AI_MODELS.fast;
 
+  const { accountId, provider, modelId, model } = await resolveAiModel(
+    workspace.id,
+    OPERATION,
+    admin,
+  );
+  const inputHash = hashInput({ prompt, version: CLASSIFY_REPLY_PROMPT_VERSION, model: modelId });
+
+  const startedAt = Date.now();
   try {
-    const response = await anthropic.messages.parse({
+    const response = await generateObject({
       model,
-      max_tokens: 512,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(ReplyClassificationSchema) },
+      schema: ReplyClassificationSchema,
+      prompt,
     });
-    if (!response.parsed_output) throw new Error("Model did not return a valid classification.");
-    const draft = response.parsed_output;
+    const draft = response.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: CLASSIFY_REPLY_PROMPT_VERSION,
       inputHash,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
       status: "succeeded",
       client: admin,
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
 
     const { data, error } = await admin
@@ -87,15 +96,20 @@ export async function classifyReply(messageId: string): Promise<Message> {
     if (error) throw error;
     return data;
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: CLASSIFY_REPLY_PROMPT_VERSION,
       inputHash,
       status: "failed",
       client: admin,
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 }

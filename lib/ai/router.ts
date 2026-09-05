@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { LanguageModel } from "ai";
+import { APICallError, type LanguageModel } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountIdForWorkspace } from "@/lib/tenancy/queries";
 import { decryptApiKey } from "@/lib/crypto/api-key";
@@ -42,6 +42,7 @@ export class AiProviderError extends Error {
 }
 
 export type ResolvedAiModel = {
+  accountId: string;
   provider: AiProvider;
   modelId: string;
   model: LanguageModel;
@@ -88,7 +89,7 @@ export async function resolveAiModel(
   operation: AiOperation,
   client?: SupabaseClient,
 ): Promise<ResolvedAiModel> {
-  const accountId = await getAccountIdForWorkspace(workspaceId);
+  const accountId = await getAccountIdForWorkspace(workspaceId, client);
   if (!accountId) {
     throw new AiProviderError("no_provider_connected", "Workspace not found.");
   }
@@ -108,5 +109,64 @@ export async function resolveAiModel(
     webSearch: spec.requiresWebSearch,
   });
 
-  return { provider: credential.provider, modelId, model };
+  return { accountId, provider: credential.provider, modelId, model };
+}
+
+/**
+ * Normalizes whatever a generateObject/generateText call threw into an AiProviderError
+ * (GTM-031), so every lib/ai/*.ts operation surfaces the same "Your {provider} API key
+ * could not complete this request" shape and ai_runs.error_code stays one of the fixed
+ * AiErrorCode values regardless of which provider's SDK produced the failure.
+ *
+ * An AiProviderError thrown earlier (e.g. resolveAiModel's no_provider_connected) passes
+ * through unchanged rather than getting re-wrapped as "unknown".
+ */
+export function toAiProviderError(error: unknown, provider: AiProvider): AiProviderError {
+  if (error instanceof AiProviderError) return error;
+
+  if (APICallError.isInstance(error)) {
+    const status = error.statusCode;
+    if (status === 401 || status === 403) {
+      return new AiProviderError(
+        "invalid_key",
+        `Your ${provider} API key could not complete this request.`,
+        provider,
+      );
+    }
+    if (status === 429) {
+      return new AiProviderError(
+        "rate_limited",
+        `Your ${provider} account hit a rate limit. Try again shortly.`,
+        provider,
+      );
+    }
+    if (status === 404) {
+      return new AiProviderError(
+        "model_unavailable",
+        `The model this feature needs isn't available on your ${provider} account.`,
+        provider,
+      );
+    }
+    if (status !== undefined && status >= 500) {
+      return new AiProviderError(
+        "provider_unavailable",
+        `${provider} is currently unavailable. Try again shortly.`,
+        provider,
+      );
+    }
+  }
+
+  if (error instanceof Error && error.name === "TimeoutError") {
+    return new AiProviderError(
+      "timeout",
+      `The request to ${provider} timed out.`,
+      provider,
+    );
+  }
+
+  return new AiProviderError(
+    "unknown",
+    `Your ${provider} API key could not complete this request.`,
+    provider,
+  );
 }

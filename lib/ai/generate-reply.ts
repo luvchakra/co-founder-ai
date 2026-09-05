@@ -1,4 +1,4 @@
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { generateObject } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import { getProspect } from "@/lib/prospects/queries";
 import { getWorkspace, getProduct } from "@/lib/tenancy/queries";
@@ -9,11 +9,11 @@ import {
   generateReplyPrompt,
   GENERATE_REPLY_PROMPT_VERSION,
 } from "@/prompts/outreach/generate_reply_v1";
-import { anthropic, AI_MODELS } from "./client";
 import { hashInput } from "./hash";
 import { OutreachMessageSchema } from "./schemas";
 import { recordAiRun } from "./usage";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { resolveAiModel, toAiProviderError } from "./router";
 
 const OPERATION = "generate_reply";
 
@@ -74,28 +74,31 @@ export async function generateReply(conversationId: string): Promise<Message> {
     classification: latestInbound.classification,
     recommendedAction: latestInbound.recommended_action ?? "Respond appropriately.",
   });
-  const inputHash = hashInput({ prompt, version: GENERATE_REPLY_PROMPT_VERSION });
-  const model = AI_MODELS.balanced;
 
+  const { accountId, provider, modelId, model } = await resolveAiModel(workspace.id, OPERATION);
+  const inputHash = hashInput({ prompt, version: GENERATE_REPLY_PROMPT_VERSION, model: modelId });
+
+  const startedAt = Date.now();
   try {
-    const response = await anthropic.messages.parse({
+    const response = await generateObject({
       model,
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-      output_config: { format: zodOutputFormat(OutreachMessageSchema) },
+      schema: OutreachMessageSchema,
+      prompt,
     });
-    if (!response.parsed_output) throw new Error("Model did not return a valid message.");
-    const draft = response.parsed_output;
+    const draft = response.object;
 
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_REPLY_PROMPT_VERSION,
       inputHash,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
       status: "succeeded",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
     });
 
     const content = draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body;
@@ -117,14 +120,19 @@ export async function generateReply(conversationId: string): Promise<Message> {
     if (error) throw error;
     return data;
   } catch (error) {
+    const aiError = toAiProviderError(error, provider);
     await recordAiRun({
       workspaceId: workspace.id,
       operation: OPERATION,
-      model,
+      model: modelId,
       promptVersion: GENERATE_REPLY_PROMPT_VERSION,
       inputHash,
       status: "failed",
+      accountId,
+      provider,
+      durationMs: Date.now() - startedAt,
+      errorCode: aiError.code,
     });
-    throw error;
+    throw aiError;
   }
 }

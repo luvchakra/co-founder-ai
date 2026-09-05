@@ -24,7 +24,10 @@ const OPERATION_REGISTRY: Record<AiOperation, AiOperationSpec> = {
   generate_icp: { qualityTier: "balanced", requiresWebSearch: false },
   research_prospect: { qualityTier: "reasoning", requiresWebSearch: true },
   discover_prospects: { qualityTier: "reasoning", requiresWebSearch: true },
-  generate_outreach_strategy: { qualityTier: "balanced", requiresWebSearch: false },
+  // Reasoning, not balanced: tying research evidence to a specific angle and CTA is
+  // exactly the synthesis task the existing lib/ai/generate-strategy.ts picked the
+  // strongest tier for -- BYOK preserves that choice rather than downgrading it.
+  generate_outreach_strategy: { qualityTier: "reasoning", requiresWebSearch: false },
   generate_outreach_message: { qualityTier: "balanced", requiresWebSearch: false },
   generate_reply: { qualityTier: "balanced", requiresWebSearch: false },
   classify_reply: { qualityTier: "fast", requiresWebSearch: false },
