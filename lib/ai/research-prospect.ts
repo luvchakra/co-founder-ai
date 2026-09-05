@@ -97,6 +97,7 @@ export async function researchProspect(prospectId: string): Promise<ProspectRese
       inputTokens: searchResponse.usage.input_tokens + structureResponse.usage.input_tokens,
       outputTokens:
         searchResponse.usage.output_tokens + structureResponse.usage.output_tokens,
+      searchCount: searchResponse.usage.server_tool_use?.web_search_requests,
       status: "succeeded",
     });
 

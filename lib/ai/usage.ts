@@ -19,6 +19,9 @@ export async function recordAiRun(input: {
   inputHash: string;
   inputTokens?: number;
   outputTokens?: number;
+  /** Actual web searches used (usage.server_tool_use.web_search_requests), for
+   * operations that call the web_search tool. Omit for everything else. */
+  searchCount?: number;
   status: "succeeded" | "failed";
   client?: SupabaseClient;
 }) {
@@ -36,6 +39,7 @@ export async function recordAiRun(input: {
     input_hash: input.inputHash,
     input_tokens: input.inputTokens ?? null,
     output_tokens: input.outputTokens ?? null,
+    search_count: input.searchCount ?? null,
     estimated_cost: estimatedCost,
     status: input.status,
   });

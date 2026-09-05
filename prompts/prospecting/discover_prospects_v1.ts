@@ -39,7 +39,11 @@ approximate size, location, a one-line description, and -- most importantly -- a
 specific match_reason tying it to the ICP criteria above (not generic filler like
 "good fit"). Prefer companies with a visible, recent buying signal (funding, hiring,
 expansion, product launch, leadership change) over ones that merely fit the
-firmographic profile. Cite the URL where you found each company.`;
+firmographic profile. Cite the URL where you found each company.
+
+Stop searching as soon as you have enough distinct, well-evidenced companies -- do not
+keep searching just because more searches are available. A smaller list where every
+company has a real match_reason and source beats a longer one padded with weak fits.`;
 }
 
 export function structureDiscoveryPrompt(findings: string): string {
