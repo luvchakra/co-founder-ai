@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProductKnowledge } from "@/lib/knowledge/queries";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,9 +38,9 @@ export default async function ProductPage({
           <h2 className="font-medium">Product profile</h2>
           <form action={generateProductProfileAction.bind(null, businessId, productId)}>
             {profile ? <input type="hidden" name="force" value="true" /> : null}
-            <Button type="submit" size="sm" disabled={sources.length === 0}>
+            <SubmitButton size="sm" disabled={sources.length === 0} pendingText="Generating...">
               {profile ? "Regenerate" : "Generate profile"}
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -149,9 +149,9 @@ export default async function ProductPage({
                 <form
                   action={deleteSourceAction.bind(null, businessId, productId, source.id)}
                 >
-                  <Button variant="ghost" size="sm" type="submit">
+                  <SubmitButton variant="ghost" size="sm" pendingText="Deleting...">
                     Delete
-                  </Button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -168,9 +168,9 @@ export default async function ProductPage({
               <Label htmlFor="content">What does this product do?</Label>
               <Textarea id="content" name="content" rows={4} required />
             </div>
-            <Button type="submit" size="sm" className="self-start">
+            <SubmitButton size="sm" className="self-start" pendingText="Adding...">
               Add
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -184,9 +184,9 @@ export default async function ProductPage({
               <Label htmlFor="url">URL</Label>
               <Input id="url" name="url" type="url" placeholder="https://" required />
             </div>
-            <Button type="submit" size="sm" className="self-start">
+            <SubmitButton size="sm" className="self-start" pendingText="Fetching...">
               Fetch and add
-            </Button>
+            </SubmitButton>
           </form>
         </div>
       </section>

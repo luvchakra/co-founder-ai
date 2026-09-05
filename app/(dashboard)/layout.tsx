@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccount } from "@/lib/tenancy/queries";
 import { signOut } from "@/app/(auth)/actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function DashboardLayout({
   children,
@@ -27,9 +27,9 @@ export default async function DashboardLayout({
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           {account ? <span>{account.name}</span> : null}
           <form action={signOut}>
-            <Button variant="ghost" size="sm" type="submit">
+            <SubmitButton variant="ghost" size="sm" pendingText="Signing out...">
               Sign out
-            </Button>
+            </SubmitButton>
           </form>
         </div>
       </header>

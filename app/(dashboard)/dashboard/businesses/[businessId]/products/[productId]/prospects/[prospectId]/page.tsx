@@ -9,7 +9,7 @@ import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
 import { listMessages } from "@/lib/messages/queries";
 import { listConversations } from "@/lib/conversations/queries";
 import type { Message } from "@/lib/messages/types";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -82,9 +82,9 @@ function OutboundMessageCard({
         <form
           action={deleteMessageAction.bind(null, businessId, productId, prospectId, message.id)}
         >
-          <Button variant="ghost" size="sm" type="submit">
+          <SubmitButton variant="ghost" size="sm" pendingText="Deleting...">
             Delete
-          </Button>
+          </SubmitButton>
         </form>
       </div>
 
@@ -105,9 +105,9 @@ function OutboundMessageCard({
           disabled={message.status === "sent"}
         />
         {message.status !== "sent" ? (
-          <Button type="submit" size="sm" variant="outline" className="self-start">
+          <SubmitButton size="sm" variant="outline" className="self-start" pendingText="Saving...">
             Save edits
-          </Button>
+          </SubmitButton>
         ) : null}
       </form>
 
@@ -116,9 +116,9 @@ function OutboundMessageCard({
           <form
             action={approveMessageAction.bind(null, businessId, productId, prospectId, message.id)}
           >
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingText="Approving...">
               Approve
-            </Button>
+            </SubmitButton>
           </form>
         ) : null}
         {message.status === "approved" ? (
@@ -131,9 +131,9 @@ function OutboundMessageCard({
               message.id,
             )}
           >
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingText="Marking sent...">
               Mark sent
-            </Button>
+            </SubmitButton>
           </form>
         ) : null}
         {message.status === "sent" && message.sent_at ? (
@@ -200,9 +200,9 @@ export default async function ProspectDetailPage({
                 </option>
               ))}
             </select>
-            <Button type="submit" size="sm" variant="outline">
+            <SubmitButton size="sm" variant="outline" pendingText="Updating...">
               Update status
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -252,9 +252,9 @@ export default async function ProspectDetailPage({
               defaultValue={prospect.description ?? ""}
             />
           </div>
-          <Button type="submit" size="sm" className="self-start sm:col-span-2">
+          <SubmitButton size="sm" className="self-start sm:col-span-2" pendingText="Saving...">
             Save changes
-          </Button>
+          </SubmitButton>
         </form>
       </section>
 
@@ -262,9 +262,9 @@ export default async function ProspectDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Research</h2>
           <form action={researchProspectAction.bind(null, businessId, productId, prospect.id)}>
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingText="Researching...">
               {research ? "Re-research" : "Research"}
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -335,9 +335,9 @@ export default async function ProspectDetailPage({
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Score</h2>
           <form action={scoreProspectAction.bind(null, businessId, productId, prospect.id)}>
-            <Button type="submit" size="sm">
+            <SubmitButton size="sm" pendingText="Scoring...">
               {score ? "Rescore" : "Score"}
-            </Button>
+            </SubmitButton>
           </form>
         </div>
 
@@ -389,9 +389,9 @@ export default async function ProspectDetailPage({
               ))}
             </select>
           ) : null}
-          <Button type="submit" size="sm" disabled={!research}>
+          <SubmitButton size="sm" disabled={!research} pendingText="Generating...">
             {strategy ? "Generate new strategy" : "Generate strategy"}
-          </Button>
+          </SubmitButton>
         </form>
 
         {!research ? (
@@ -426,9 +426,9 @@ export default async function ProspectDetailPage({
                   strategy.id,
                 )}
               >
-                <Button type="submit" size="sm" variant="outline">
+                <SubmitButton size="sm" variant="outline" pendingText="Approving...">
                   Approve strategy
-                </Button>
+                </SubmitButton>
               </form>
             ) : null}
           </div>
@@ -448,9 +448,9 @@ export default async function ProspectDetailPage({
                 strategy.id,
               )}
             >
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm" pendingText="Generating...">
                 Generate message
-              </Button>
+              </SubmitButton>
             </form>
           ) : null}
         </div>
@@ -500,9 +500,9 @@ export default async function ProspectDetailPage({
                           c.id,
                         )}
                       >
-                        <Button type="submit" size="sm" variant="ghost">
+                        <SubmitButton size="sm" variant="ghost" pendingText="Closing...">
                           Close
-                        </Button>
+                        </SubmitButton>
                       </form>
                     ) : null}
                   </div>
@@ -554,9 +554,9 @@ export default async function ProspectDetailPage({
                       c.id,
                     )}
                   >
-                    <Button type="submit" size="sm">
+                    <SubmitButton size="sm" pendingText="Generating...">
                       Generate reply
-                    </Button>
+                    </SubmitButton>
                   </form>
                 ) : null}
               </div>
@@ -599,9 +599,9 @@ export default async function ProspectDetailPage({
                     c.id,
                   )}
                 >
-                  <Button variant="ghost" size="sm" type="submit">
+                  <SubmitButton variant="ghost" size="sm" pendingText="Deleting...">
                     Delete
-                  </Button>
+                  </SubmitButton>
                 </form>
               </li>
             ))}
@@ -644,9 +644,9 @@ export default async function ProspectDetailPage({
               <Label htmlFor="phone">Phone</Label>
               <Input id="phone" name="phone" />
             </div>
-            <Button type="submit" size="sm" className="self-start sm:col-span-2">
+            <SubmitButton size="sm" className="self-start sm:col-span-2" pendingText="Adding...">
               Add contact
-            </Button>
+            </SubmitButton>
           </form>
         </div>
       </section>

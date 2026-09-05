@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { importProspectsAction } from "./actions";
@@ -48,9 +48,9 @@ export default async function ImportProspectsPage({
             placeholder={"company_name,website,industry\nAcme Inc,https://acme.com,Banking"}
           />
         </div>
-        <Button type="submit" size="sm" className="self-start">
+        <SubmitButton size="sm" className="self-start" pendingText="Importing...">
           Import
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

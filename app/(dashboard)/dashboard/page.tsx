@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAccount, listBusinesses } from "@/lib/tenancy/queries";
 import { createBusinessAction } from "@/app/(dashboard)/dashboard/actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -59,7 +59,7 @@ export default async function DashboardPage() {
             <Label htmlFor="industry">Industry</Label>
             <Input id="industry" name="industry" />
           </div>
-          <Button type="submit">Create business</Button>
+          <SubmitButton pendingText="Creating...">Create business</SubmitButton>
         </form>
       </section>
     </main>

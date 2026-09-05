@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,9 +40,9 @@ export default async function IcpPage({
           No ICP yet. Generate one from the approved product profile.
         </p>
         <form action={generateIcpAction.bind(null, businessId, productId)}>
-          <Button type="submit" size="sm">
+          <SubmitButton size="sm" pendingText="Generating...">
             Generate ICP
-          </Button>
+          </SubmitButton>
         </form>
       </div>
     );
@@ -63,15 +63,15 @@ export default async function IcpPage({
         <div className="flex gap-2">
           <form action={generateIcpAction.bind(null, businessId, productId)}>
             <input type="hidden" name="force" value="true" />
-            <Button type="submit" variant="outline" size="sm">
+            <SubmitButton variant="outline" size="sm" pendingText="Regenerating...">
               Regenerate
-            </Button>
+            </SubmitButton>
           </form>
           {icp.status === "draft" ? (
             <form action={approveIcpAction.bind(null, businessId, productId, icp.id)}>
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm" pendingText="Approving...">
                 Approve
-              </Button>
+              </SubmitButton>
             </form>
           ) : null}
         </div>
@@ -124,9 +124,9 @@ export default async function IcpPage({
           />
         </div>
         <p className="text-xs text-muted-foreground">One item per line.</p>
-        <Button type="submit" size="sm" className="self-start">
+        <SubmitButton size="sm" className="self-start" pendingText="Saving...">
           Save changes
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

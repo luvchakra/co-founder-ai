@@ -7,7 +7,7 @@ import {
   listBusinesses,
 } from "@/lib/tenancy/queries";
 import { createProductAction } from "@/app/(dashboard)/dashboard/actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BusinessSwitcher } from "@/components/tenancy/business-switcher";
@@ -72,7 +72,7 @@ export default async function BusinessPage({
             <Label htmlFor="website">Website</Label>
             <Input id="website" name="website" type="url" placeholder="https://" />
           </div>
-          <Button type="submit">Create product</Button>
+          <SubmitButton pendingText="Creating...">Create product</SubmitButton>
         </form>
       </section>
     </main>

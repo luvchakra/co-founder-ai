@@ -4,6 +4,7 @@ import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspects, listProspectIndustries } from "@/lib/prospects/queries";
 import type { ProspectStatus } from "@/lib/prospects/types";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createProspectAction } from "./actions";
@@ -171,9 +172,9 @@ export default async function ProspectsPage({
             <Label htmlFor="description">Description</Label>
             <Input id="description" name="description" />
           </div>
-          <Button type="submit" size="sm" className="self-start sm:col-span-2">
+          <SubmitButton size="sm" className="self-start sm:col-span-2" pendingText="Adding...">
             Add prospect
-          </Button>
+          </SubmitButton>
         </form>
       </div>
 
