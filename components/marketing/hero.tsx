@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { LandingButton } from "./landing-button";
+import { ShowInterestCta } from "./show-interest";
 import { FadeIn } from "./fade-in";
 
 export function Hero() {
@@ -34,6 +35,7 @@ export function Hero() {
             <br />
             You stay in control. AI does the heavy lifting.
           </p>
+          <ShowInterestCta className="mt-4" />
         </FadeIn>
       </div>
 

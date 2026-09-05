@@ -1,4 +1,5 @@
 import { LandingButton } from "./landing-button";
+import { ShowInterestCta } from "./show-interest";
 import { FadeIn } from "./fade-in";
 
 export function FinalCta() {
@@ -21,6 +22,7 @@ export function FinalCta() {
           <p className="mt-4 text-sm text-landing-muted">
             Takes only a few minutes to get started.
           </p>
+          <ShowInterestCta className="mt-4" />
         </div>
       </FadeIn>
     </section>

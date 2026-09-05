@@ -3,56 +3,69 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * CoFounderAI UI & CTA Enhancement doc §1: the approved landing page look (deep charcoal +
+ * electric violet accent) is now the single design system for the whole application, not
+ * just marketing/auth. Rather than sprinkling `text-landing-*` classes through every
+ * dashboard file, the base shadcn semantic tokens below carry the same values the
+ * `.landing-theme` block already defined -- every existing `bg-background`,
+ * `text-muted-foreground`, `border`, `bg-primary` etc. usage across the dashboard,
+ * onboarding, and auth forms now renders in the same palette for free, with zero
+ * unrelated files touched. There is no light/dark toggle in this product, so `:root` and
+ * `.dark` intentionally carry identical values -- `.dark` still exists only so the
+ * handful of existing `dark:` utility usages (status badges) resolve consistently once
+ * `<html>` carries the `dark` class (see app/layout.tsx).
+ */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.15 0.012 290);
+  --foreground: oklch(0.98 0.002 290);
+  --card: oklch(0.19 0.014 290);
+  --card-foreground: oklch(0.98 0.002 290);
+  --popover: oklch(0.19 0.014 290);
+  --popover-foreground: oklch(0.98 0.002 290);
+  --primary: oklch(0.62 0.24 292);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.016 290);
+  --secondary-foreground: oklch(0.98 0.002 290);
+  --muted: oklch(0.22 0.014 290);
+  --muted-foreground: oklch(0.72 0.01 290);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.98 0.002 290);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.62 0.24 292 / 60%);
+}
+
+.dark {
+  --background: oklch(0.15 0.012 290);
+  --foreground: oklch(0.98 0.002 290);
+  --card: oklch(0.19 0.014 290);
+  --card-foreground: oklch(0.98 0.002 290);
+  --popover: oklch(0.19 0.014 290);
+  --popover-foreground: oklch(0.98 0.002 290);
+  --primary: oklch(0.62 0.24 292);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.24 0.016 290);
+  --secondary-foreground: oklch(0.98 0.002 290);
+  --muted: oklch(0.22 0.014 290);
+  --muted-foreground: oklch(0.72 0.01 290);
+  --accent: oklch(1 0 0 / 8%);
+  --accent-foreground: oklch(0.98 0.002 290);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.62 0.24 292 / 60%);
 }
 
 /*
- * Marketing/auth-only dark palette (docs/CoFounderAI landing page requirements, "Suggested
- * Visual Identity"): deep charcoal + electric violet accent, kept entirely separate from
- * the dashboard's shadcn light/dark tokens above so the actual product UI is unaffected.
- * Applied by wrapping marketing/auth page content in the .landing-theme class -- these
- * variables (and the utility classes @theme inline generates from them, e.g. bg-landing-bg,
- * text-landing-accent) only resolve inside that scope.
+ * Kept as an explicit alias block (docs/landing-page-requirements.md's original
+ * `.landing-theme` scope) purely so nothing in components/marketing or the auth/onboarding
+ * pages needs editing -- their `bg-landing-bg`, `text-landing-accent` etc. classes keep
+ * resolving to exactly the same values as the base tokens above, just under their own
+ * names. This is the one deliberate duplication: everything else in the app reads the base
+ * tokens directly.
  */
 .landing-theme {
   --landing-bg: oklch(0.15 0.012 290);
