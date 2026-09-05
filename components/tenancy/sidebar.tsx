@@ -27,17 +27,12 @@ export function Sidebar({
   const { businessId: activeBusinessId, productId: activeProductId } =
     getActiveIdsFromPath(pathname);
 
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set(activeBusinessId ? [activeBusinessId] : []),
-  );
+  // Accordion, not independent toggles: only one business's product list is open at a
+  // time, so opening one always closes whichever other one was open.
+  const [expandedId, setExpandedId] = useState<string | null>(activeBusinessId);
 
   function toggleBusiness(businessId: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(businessId)) next.delete(businessId);
-      else next.add(businessId);
-      return next;
-    });
+    setExpandedId((prev) => (prev === businessId ? null : businessId));
   }
 
   // Escape closes the drawer, matching every other dismissible overlay in the app.
@@ -93,7 +88,7 @@ export function Sidebar({
         <div className="flex flex-col divide-y border-t">
           {businesses.map((business) => {
             const products = productsByBusiness[business.id] ?? [];
-            const isExpanded = expanded.has(business.id) || business.id === activeBusinessId;
+            const isExpanded = expandedId === business.id;
             const isActiveBusiness = business.id === activeBusinessId && !activeProductId;
 
             return (
@@ -120,7 +115,7 @@ export function Sidebar({
                       // unlike every other link in this drawer, don't close it -- the
                       // whole point of clicking a business is to see its products open
                       // up next, not to have the drawer vanish before that can happen.
-                      setExpanded((prev) => new Set(prev).add(business.id));
+                      setExpandedId(business.id);
                     }}
                     className={cn(
                       "flex-1 truncate rounded-md py-2 pl-1 hover:bg-accent",

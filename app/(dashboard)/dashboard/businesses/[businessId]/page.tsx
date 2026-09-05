@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EditableName } from "@/components/tenancy/editable-name";
 import { EditableText } from "@/components/tenancy/editable-text";
+import { Breadcrumbs } from "@/components/tenancy/breadcrumbs";
 
 export default async function BusinessPage({
   params,
@@ -22,6 +23,8 @@ export default async function BusinessPage({
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: business.name }]} />
+
       <div className="flex flex-col gap-2">
         <EditableName
           name={business.name}
