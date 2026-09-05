@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
 import { useSidebar } from "./sidebar-context";
@@ -11,10 +11,9 @@ import type { Business, Product } from "@/lib/tenancy/types";
 
 /**
  * Business -> Product drill-down (docs/prospects-pipeline-redesign-requirements.md R12),
- * now a standard collapsed-by-default drawer opened via the header's hamburger
- * (sidebar-toggle.tsx, shared open state from sidebar-context.tsx) rather than a
- * permanently visible column -- dismissible by backdrop click, Escape, or navigating to a
- * link inside it.
+ * a standard collapsed-by-default drawer opened via the header's hamburger
+ * (sidebar-toggle.tsx, shared open state from sidebar-context.tsx) -- dismissible by
+ * backdrop click, Escape, or navigating to a product link inside it.
  */
 export function Sidebar({
   businesses,
@@ -62,9 +61,9 @@ export function Sidebar({
       />
       <nav
         aria-label="Businesses"
-        className="fixed top-14 bottom-0 left-0 z-40 flex w-64 shrink-0 flex-col gap-1 overflow-y-auto border-r bg-background p-3 text-sm shadow-2xl"
+        className="fixed top-14 bottom-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto border-r bg-background text-base shadow-2xl"
       >
-        <div className="flex items-center justify-between px-2 pb-2">
+        <div className="flex items-center justify-between px-3 py-2.5">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             Businesses
           </span>
@@ -78,72 +77,82 @@ export function Sidebar({
           </button>
         </div>
 
+        <div className="border-t" />
+
         <Link
           href="/dashboard"
           onClick={() => setOpen(false)}
           className={cn(
-            "rounded-md px-2 py-1.5 font-medium hover:bg-accent",
+            "px-3 py-2.5 font-medium hover:bg-accent",
             pathname === "/dashboard" && "bg-accent",
           )}
         >
           All businesses
         </Link>
 
-        {businesses.map((business) => {
-          const products = productsByBusiness[business.id] ?? [];
-          const isExpanded = expanded.has(business.id) || business.id === activeBusinessId;
-          const isActiveBusiness = business.id === activeBusinessId && !activeProductId;
+        <div className="flex flex-col divide-y border-t">
+          {businesses.map((business) => {
+            const products = productsByBusiness[business.id] ?? [];
+            const isExpanded = expanded.has(business.id) || business.id === activeBusinessId;
+            const isActiveBusiness = business.id === activeBusinessId && !activeProductId;
 
-          return (
-            <div key={business.id} className="flex flex-col">
-              <div className="flex items-center">
-                <button
-                  type="button"
-                  onClick={() => toggleBusiness(business.id)}
-                  disabled={products.length === 0}
-                  aria-label={isExpanded ? `Collapse ${business.name}` : `Expand ${business.name}`}
-                  className="flex size-6 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-0"
-                >
-                  {isExpanded ? "▾" : "▸"}
-                </button>
-                <Link
-                  href={`/dashboard/businesses/${business.id}`}
-                  onClick={() => {
-                    // Expand immediately (don't wait on the route transition) and, unlike
-                    // every other link in this drawer, don't close it -- the whole point
-                    // of clicking a business is to see its products open up next, not to
-                    // have the drawer vanish before that can happen.
-                    setExpanded((prev) => new Set(prev).add(business.id));
-                  }}
-                  className={cn(
-                    "flex-1 truncate rounded-md px-2 py-1.5 hover:bg-accent",
-                    isActiveBusiness && "bg-accent font-medium",
-                  )}
-                >
-                  {business.name}
-                </Link>
-              </div>
-
-              {isExpanded && products.length > 0 ? (
-                <div className="ml-6 flex flex-col gap-0.5 border-l pl-2">
-                  {products.map((product) => (
-                    <Link
-                      key={product.id}
-                      href={`/dashboard/businesses/${business.id}/products/${product.id}`}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "truncate rounded-md px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground",
-                        product.id === activeProductId && "bg-accent font-medium text-foreground",
-                      )}
-                    >
-                      {product.name}
-                    </Link>
-                  ))}
+            return (
+              <div key={business.id} className="flex flex-col py-1">
+                <div className="flex items-center pr-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleBusiness(business.id)}
+                    disabled={products.length === 0}
+                    aria-label={
+                      isExpanded ? `Collapse ${business.name}` : `Expand ${business.name}`
+                    }
+                    className="flex size-9 shrink-0 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
+                  >
+                    <ChevronRight
+                      className={cn("size-4 transition-transform duration-150", isExpanded && "rotate-90")}
+                      aria-hidden="true"
+                    />
+                  </button>
+                  <Link
+                    href={`/dashboard/businesses/${business.id}`}
+                    onClick={() => {
+                      // Expand immediately (don't wait on the route transition) and,
+                      // unlike every other link in this drawer, don't close it -- the
+                      // whole point of clicking a business is to see its products open
+                      // up next, not to have the drawer vanish before that can happen.
+                      setExpanded((prev) => new Set(prev).add(business.id));
+                    }}
+                    className={cn(
+                      "flex-1 truncate rounded-md py-2 pl-1 hover:bg-accent",
+                      isActiveBusiness && "bg-accent font-medium",
+                    )}
+                  >
+                    {business.name}
+                  </Link>
                 </div>
-              ) : null}
-            </div>
-          );
-        })}
+
+                {isExpanded && products.length > 0 ? (
+                  <div className="mt-1 mb-1 ml-9 flex flex-col gap-0.5 border-l pl-2">
+                    {products.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={`/dashboard/businesses/${business.id}/products/${product.id}`}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "truncate rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground",
+                          product.id === activeProductId &&
+                            "bg-accent font-medium text-foreground",
+                        )}
+                      >
+                        {product.name}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </nav>
     </>
   );
