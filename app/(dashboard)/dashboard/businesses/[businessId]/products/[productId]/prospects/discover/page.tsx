@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspectSuggestions } from "@/lib/prospects/queries";
+import { getRecentOperationCost } from "@/lib/usage/queries";
+import { formatCostHint } from "@/lib/usage/format";
 import { SubmitButton } from "@/components/ui/submit-button";
 import {
   runDiscoveryAction,
@@ -21,7 +23,10 @@ export default async function DiscoverProspectsPage({
   const workspace = await getWorkspaceForProduct(product.id);
   if (!workspace) notFound();
 
-  const suggestions = await listProspectSuggestions(workspace.id);
+  const [suggestions, costSample] = await Promise.all([
+    listProspectSuggestions(workspace.id),
+    getRecentOperationCost(workspace.id, "discover_prospects"),
+  ]);
   const prospectsPath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
   return (
@@ -38,11 +43,14 @@ export default async function DiscoverProspectsPage({
             added to your pipeline until you review and approve it below.
           </p>
         </div>
-        <form action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}>
-          <SubmitButton pendingText="Searching the web...">
-            Find 10 new prospects
-          </SubmitButton>
-        </form>
+        <div className="flex flex-col items-end gap-1">
+          <form action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}>
+            <SubmitButton pendingText="Searching the web...">
+              Find 10 new prospects
+            </SubmitButton>
+          </form>
+          <p className="text-xs text-muted-foreground">{formatCostHint(costSample)}</p>
+        </div>
       </div>
 
       {suggestions.length === 0 ? (

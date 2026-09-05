@@ -7,6 +7,8 @@ import { getProspectResearch } from "@/lib/research/queries";
 import { getProspectScore } from "@/lib/scoring/queries";
 import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
 import { listMessages } from "@/lib/messages/queries";
+import { getRecentOperationCost } from "@/lib/usage/queries";
+import { formatCostHint } from "@/lib/usage/format";
 import { listConversations } from "@/lib/conversations/queries";
 import type { Message } from "@/lib/messages/types";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -161,14 +163,16 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const [contacts, research, score, strategy, messages, conversations] = await Promise.all([
-    listContacts(prospect.id),
-    getProspectResearch(prospect.id),
-    getProspectScore(prospect.id),
-    getLatestOutreachStrategy(prospect.id),
-    listMessages(prospect.id),
-    listConversations(prospect.id),
-  ]);
+  const [contacts, research, score, strategy, messages, conversations, researchCostSample] =
+    await Promise.all([
+      listContacts(prospect.id),
+      getProspectResearch(prospect.id),
+      getProspectScore(prospect.id),
+      getLatestOutreachStrategy(prospect.id),
+      listMessages(prospect.id),
+      listConversations(prospect.id),
+      getRecentOperationCost(workspace.id, "research_prospect"),
+    ]);
   const drafts = messages.filter((m) => !m.conversation_id);
   const threadForConversation = (conversationId: string) =>
     messages
@@ -261,11 +265,14 @@ export default async function ProspectDetailPage({
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Research</h2>
-          <form action={researchProspectAction.bind(null, businessId, productId, prospect.id)}>
-            <SubmitButton size="sm" pendingText="Researching...">
-              {research ? "Re-research" : "Research"}
-            </SubmitButton>
-          </form>
+          <div className="flex flex-col items-end gap-1">
+            <form action={researchProspectAction.bind(null, businessId, productId, prospect.id)}>
+              <SubmitButton size="sm" pendingText="Researching...">
+                {research ? "Re-research" : "Research"}
+              </SubmitButton>
+            </form>
+            <p className="text-xs text-muted-foreground">{formatCostHint(researchCostSample)}</p>
+          </div>
         </div>
 
         {!research ? (

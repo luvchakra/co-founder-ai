@@ -12,3 +12,10 @@ export type WorkspaceUsage = {
   totalCost: number;
   byOperation: OperationUsage[];
 };
+
+export type OperationCostSample = {
+  average: number;
+  min: number;
+  max: number;
+  sampleSize: number;
+};

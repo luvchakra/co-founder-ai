@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getWorkspaceUsage } from "@/lib/usage/queries";
-import { FREE_TIER_MONTHLY_RUN_LIMIT } from "@/lib/usage/limits";
+import { FREE_TIER_MONTHLY_RUN_LIMIT, FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
 
 const OPERATION_LABEL: Record<string, string> = {
   understand_product: "Product profile",
   generate_icp: "ICP generation",
   research_prospect: "Prospect research",
+  discover_prospects: "Prospect discovery",
   generate_outreach_strategy: "Outreach strategy",
   generate_outreach_message: "Message generation",
   generate_reply: "Reply generation",
@@ -33,7 +34,10 @@ export default async function UsagePage({
   if (!workspace) notFound();
 
   const usage = await getWorkspaceUsage(workspace.id);
-  const percentUsed = Math.min(100, Math.round((usage.totalRuns / FREE_TIER_MONTHLY_RUN_LIMIT) * 100));
+  const percentOfCostLimit = Math.min(
+    100,
+    Math.round((usage.totalCost / FREE_TIER_MONTHLY_COST_LIMIT_USD) * 100),
+  );
   const periodLabel = new Date(usage.periodStart).toLocaleDateString(undefined, {
     month: "long",
     year: "numeric",
@@ -50,17 +54,20 @@ export default async function UsagePage({
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-sm">
             <span>
-              {usage.totalRuns} / {FREE_TIER_MONTHLY_RUN_LIMIT} AI runs
+              {currencyFormat.format(usage.totalCost)} / {currencyFormat.format(FREE_TIER_MONTHLY_COST_LIMIT_USD)}
             </span>
-            <span className="text-muted-foreground">{currencyFormat.format(usage.totalCost)}</span>
+            <span className="text-muted-foreground">
+              {usage.totalRuns} / {FREE_TIER_MONTHLY_RUN_LIMIT} runs
+            </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary"
-              style={{ width: `${percentUsed}%` }}
+              style={{ width: `${percentOfCostLimit}%` }}
             />
           </div>
-          {usage.totalRuns >= FREE_TIER_MONTHLY_RUN_LIMIT ? (
+          {usage.totalCost >= FREE_TIER_MONTHLY_COST_LIMIT_USD ||
+          usage.totalRuns >= FREE_TIER_MONTHLY_RUN_LIMIT ? (
             <p className="text-sm text-destructive">
               Free-tier limit reached for this month -- AI features are paused until next
               month.
