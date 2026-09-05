@@ -6,6 +6,8 @@ import type { Product } from "@/lib/tenancy/types";
 import { signOut } from "@/app/(auth)/actions";
 import { createBusinessAction } from "@/app/(dashboard)/dashboard/actions";
 import { Sidebar } from "@/components/tenancy/sidebar";
+import { SidebarProvider } from "@/components/tenancy/sidebar-context";
+import { SidebarToggle } from "@/components/tenancy/sidebar-toggle";
 import { BusinessSelector } from "@/components/tenancy/business-selector";
 import { UserMenu } from "@/components/tenancy/user-menu";
 
@@ -32,30 +34,31 @@ export default async function DashboardLayout({
   const avatarUrl = (metadata.avatar_url || metadata.picture || null) as string | null;
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between gap-4 border-b px-6 py-3">
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="font-semibold">
-            co-founder-ai
-          </Link>
-          {account ? (
-            <BusinessSelector
-              businesses={businesses}
-              createBusinessAction={createBusinessAction.bind(null, account.id)}
-            />
-          ) : null}
-        </div>
-        <UserMenu
-          name={displayName}
-          email={user.email ?? ""}
-          avatarUrl={avatarUrl}
-          signOutAction={signOut}
-        />
-      </header>
-      <div className="flex flex-1">
+    <SidebarProvider>
+      <div className="flex min-h-full flex-1 flex-col">
+        <header className="relative z-50 flex h-14 shrink-0 items-center justify-between gap-4 border-b bg-background px-6">
+          <div className="flex items-center gap-2">
+            <SidebarToggle />
+            <Link href="/dashboard" className="font-semibold">
+              co-founder-ai
+            </Link>
+            {account ? (
+              <BusinessSelector
+                businesses={businesses}
+                createBusinessAction={createBusinessAction.bind(null, account.id)}
+              />
+            ) : null}
+          </div>
+          <UserMenu
+            name={displayName}
+            email={user.email ?? ""}
+            avatarUrl={avatarUrl}
+            signOutAction={signOut}
+          />
+        </header>
         <Sidebar businesses={businesses} productsByBusiness={productsByBusiness} />
         <div className="flex flex-1 flex-col">{children}</div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

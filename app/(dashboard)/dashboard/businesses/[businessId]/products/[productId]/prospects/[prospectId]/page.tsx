@@ -120,7 +120,7 @@ function OutboundMessageCard({
         <Textarea
           name="content"
           defaultValue={message.content}
-          rows={5}
+          rows={2}
           disabled={message.status === "sent"}
         />
         {message.status !== "sent" ? (

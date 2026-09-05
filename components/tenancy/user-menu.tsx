@@ -50,7 +50,7 @@ export function UserMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground transition-[opacity,transform] duration-100 hover:opacity-90 active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
       >
         {avatarUrl ? (
           // avatar_url is an arbitrary external URL (Google's profile photo host), not a
