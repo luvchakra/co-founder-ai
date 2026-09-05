@@ -37,13 +37,13 @@ export function BusinessSelector({
 
   return (
     <>
-      <div ref={containerRef} className="relative">
+      <div ref={containerRef} className="relative min-w-0 flex-1">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className="flex min-w-0 max-w-36 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-[background-color,transform] duration-100 hover:bg-accent active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:max-w-[16rem]"
+          className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-[background-color,transform] duration-100 hover:bg-accent active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
           <span className="truncate">{activeBusiness?.name ?? "Select Business"}</span>
           <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
