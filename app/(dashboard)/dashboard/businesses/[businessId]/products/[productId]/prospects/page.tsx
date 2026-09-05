@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspects, listProspectIndustries } from "@/lib/prospects/queries";
 import type { ProspectStatus } from "@/lib/prospects/types";
+import { PROSPECT_STAGES, PROSPECT_STAGE_LABEL, type ProspectStage } from "@/lib/prospects/pipeline";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
@@ -20,12 +21,14 @@ export default async function ProspectsPage({
     status?: string;
     industry?: string;
     search?: string;
+    stage?: string;
+    sort?: string;
     imported?: string;
     skipped?: string;
   }>;
 }) {
   const { businessId, productId } = await params;
-  const { status, industry, search, imported, skipped } = await searchParams;
+  const { status, industry, search, stage, sort, imported, skipped } = await searchParams;
 
   const product = await getProduct(productId);
   if (!product || product.business_id !== businessId) notFound();
@@ -33,12 +36,19 @@ export default async function ProspectsPage({
   const workspace = await getWorkspaceForProduct(product.id);
   if (!workspace) notFound();
 
+  const sortMode = sort === "stage" ? "stage" : "recent";
+
   const [prospects, industries] = await Promise.all([
-    listProspects(workspace.id, {
-      status: (status as ProspectStatus) || undefined,
-      industry: industry || undefined,
-      search: search || undefined,
-    }),
+    listProspects(
+      workspace.id,
+      {
+        status: (status as ProspectStatus) || undefined,
+        industry: industry || undefined,
+        search: search || undefined,
+        stage: (stage as ProspectStage) || undefined,
+      },
+      sortMode,
+    ),
     listProspectIndustries(workspace.id),
   ]);
 
@@ -78,6 +88,22 @@ export default async function ProspectsPage({
             ))}
           </select>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="stage">Stage</Label>
+          <select
+            id="stage"
+            name="stage"
+            defaultValue={stage ?? ""}
+            className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
+          >
+            <option value="">Any</option>
+            {PROSPECT_STAGES.map((s) => (
+              <option key={s} value={s}>
+                {PROSPECT_STAGE_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </div>
         {industries.length > 0 ? (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="industry">Industry</Label>
@@ -96,10 +122,22 @@ export default async function ProspectsPage({
             </select>
           </div>
         ) : null}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="sort">Sort</Label>
+          <select
+            id="sort"
+            name="sort"
+            defaultValue={sortMode}
+            className="border-input h-9 rounded-md border bg-transparent px-3 text-sm"
+          >
+            <option value="recent">Most recent</option>
+            <option value="stage">Pipeline stage</option>
+          </select>
+        </div>
         <Button type="submit" size="sm" variant="outline">
           Filter
         </Button>
-        {status || industry || search ? (
+        {status || industry || search || stage || sort ? (
           <Button asChild size="sm" variant="ghost">
             <Link href={basePath}>Clear</Link>
           </Button>
@@ -116,6 +154,8 @@ export default async function ProspectsPage({
               <th className="py-2 pr-4 font-medium">Location</th>
               <th className="py-2 pr-4 font-medium">Status</th>
               <th className="py-2 pr-4 font-medium">Fit score</th>
+              <th className="py-2 pr-4 font-medium">Stage</th>
+              <th className="py-2 pr-4 font-medium">Next action</th>
             </tr>
           </thead>
           <tbody>
@@ -131,6 +171,28 @@ export default async function ProspectsPage({
                 <td className="py-2 pr-4 text-muted-foreground">{p.location ?? "—"}</td>
                 <td className="py-2 pr-4 text-muted-foreground">{p.status}</td>
                 <td className="py-2 pr-4 text-muted-foreground">{p.fit_score ?? "—"}</td>
+                <td className="py-2 pr-4">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
+                    {PROSPECT_STAGE_LABEL[p.stage]}
+                  </span>
+                  {p.isStuck ? (
+                    <span
+                      title={`No activity since ${new Date(p.lastActivityAt).toLocaleDateString()}`}
+                      className="ml-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400"
+                    >
+                      Needs next step
+                    </span>
+                  ) : null}
+                </td>
+                <td className="py-2 pr-4">
+                  {p.nextAction ? (
+                    <Link href={`${basePath}/${p.id}`} className="text-sm underline underline-offset-4">
+                      {p.nextAction}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

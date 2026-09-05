@@ -10,6 +10,11 @@ import { listMessages } from "@/lib/messages/queries";
 import { getRecentOperationCost } from "@/lib/usage/queries";
 import { formatCostHint } from "@/lib/usage/format";
 import { listConversations } from "@/lib/conversations/queries";
+import {
+  deriveProspectPipelineState,
+  latestTimestamp,
+  PROSPECT_STAGE_LABEL,
+} from "@/lib/prospects/pipeline";
 import type { Message } from "@/lib/messages/types";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AiActionForm } from "@/components/ai/ai-action-form";
@@ -181,11 +186,43 @@ export default async function ProspectDetailPage({
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
+  const latestConversation = conversations.reduce<(typeof conversations)[number] | null>(
+    (latest, c) => (!latest || c.last_message_at > latest.last_message_at ? c : latest),
+    null,
+  );
+  const { stage, nextAction } = deriveProspectPipelineState({
+    hasResearch: research !== null,
+    hasScore: score !== null,
+    latestStrategyStatus: strategy?.status ?? null,
+    hasUnsentMessage: drafts.length > 0,
+    hasSentMessage: messages.some((m) => m.status === "sent"),
+    latestConversationStatus: latestConversation?.status ?? null,
+    lastActivityAt: latestTimestamp(
+      prospect.updated_at,
+      research?.researched_at,
+      score?.created_at,
+      strategy?.updated_at,
+      ...messages.map((m) => m.created_at),
+      latestConversation?.last_message_at,
+    ),
+  });
+
   return (
     <div className="flex flex-col gap-8">
       <Link href={basePath} className="text-sm text-muted-foreground hover:underline">
         ← Back to prospects
       </Link>
+
+      <div className="flex items-center justify-between rounded-md border bg-muted/40 p-4">
+        <div>
+          <p className="text-xs font-medium uppercase text-muted-foreground">
+            {PROSPECT_STAGE_LABEL[stage]}
+          </p>
+          <p className="font-medium">
+            {nextAction ? `Next: ${nextAction}` : "No action needed right now"}
+          </p>
+        </div>
+      </div>
 
       <section className="flex flex-col gap-4 rounded-md border p-4">
         <div className="flex items-center justify-between gap-4">

@@ -1,18 +1,92 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Prospect, ProspectStatus, ProspectSuggestion } from "./types";
+import {
+  deriveProspectPipelineState,
+  latestTimestamp,
+  PROSPECT_STAGES,
+  type ProspectPipelineState,
+  type ProspectStage,
+} from "./pipeline";
+
+export type ProspectWithPipeline = Prospect & ProspectPipelineState;
 
 export type ProspectFilters = {
   status?: ProspectStatus;
   industry?: string;
   search?: string;
+  stage?: ProspectStage;
 };
 
+export type ProspectSort = "recent" | "stage";
+
+/** Row shape after embedding the child tables listProspects joins for pipeline state --
+ * prospect_research/prospect_scores are `unique` on prospect_id (schema-enforced
+ * one-to-one) so PostgREST embeds them as a single object; outreach_strategies/
+ * messages/conversations aren't, so those come back as arrays and the latest one is
+ * picked in deriveRow below. */
+type ProspectPipelineRow = Prospect & {
+  prospect_research: { researched_at: string } | null;
+  prospect_scores: { created_at: string } | null;
+  outreach_strategies: { status: "draft" | "approved"; updated_at: string }[];
+  messages: { status: "draft" | "approved" | "sent"; created_at: string; sent_at: string | null }[];
+  conversations: { status: "awaiting_reply" | "replied" | "closed"; last_message_at: string }[];
+};
+
+function latestBy<T>(rows: T[], key: keyof T): T | null {
+  if (rows.length === 0) return null;
+  return rows.reduce((latest, row) =>
+    (row[key] as string) > (latest[key] as string) ? row : latest,
+  );
+}
+
+function deriveRow(row: ProspectPipelineRow): ProspectWithPipeline {
+  const latestStrategy = latestBy(row.outreach_strategies, "updated_at");
+  const latestMessage = latestBy(row.messages, "created_at");
+  const latestConversation = latestBy(row.conversations, "last_message_at");
+
+  const state = deriveProspectPipelineState({
+    hasResearch: row.prospect_research !== null,
+    hasScore: row.prospect_scores !== null,
+    latestStrategyStatus: latestStrategy?.status ?? null,
+    hasUnsentMessage: row.messages.some((m) => m.status !== "sent"),
+    hasSentMessage: row.messages.some((m) => m.status === "sent"),
+    latestConversationStatus: latestConversation?.status ?? null,
+    lastActivityAt: latestTimestamp(
+      row.updated_at,
+      row.prospect_research?.researched_at,
+      row.prospect_scores?.created_at,
+      latestStrategy?.updated_at,
+      latestMessage?.created_at,
+      latestMessage?.sent_at,
+      latestConversation?.last_message_at,
+    ),
+  });
+
+  // Structurally satisfies ProspectWithPipeline (Prospect & ProspectPipelineState) even
+  // though the embedded child-table fields ride along at runtime -- nothing downstream
+  // reads them.
+  return { ...row, ...state };
+}
+
+const PIPELINE_SELECT =
+  "*, prospect_research(researched_at), prospect_scores(created_at), " +
+  "outreach_strategies(status, updated_at), messages(status, created_at, sent_at), " +
+  "conversations(status, last_message_at)";
+
+/**
+ * Pipeline stage/next-action are computed here, not stored -- no new AI call, just this
+ * join/aggregate (docs/prospects-pipeline-redesign-requirements.md R3). `stage` isn't a
+ * DB column, so filtering and stage-sorting happen in application code after fetching;
+ * fine at this app's scale (a solo founder's own pipeline, no pagination exists here
+ * today either).
+ */
 export async function listProspects(
   workspaceId: string,
   filters: ProspectFilters = {},
-): Promise<Prospect[]> {
+  sort: ProspectSort = "recent",
+): Promise<ProspectWithPipeline[]> {
   const supabase = await createClient();
-  let query = supabase.from("prospects").select("*").eq("workspace_id", workspaceId);
+  let query = supabase.from("prospects").select(PIPELINE_SELECT).eq("workspace_id", workspaceId);
 
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.industry) query = query.eq("industry", filters.industry);
@@ -20,7 +94,18 @@ export async function listProspects(
 
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) throw error;
-  return data;
+
+  let prospects = (data as unknown as ProspectPipelineRow[]).map(deriveRow);
+
+  if (filters.stage) prospects = prospects.filter((p) => p.stage === filters.stage);
+
+  if (sort === "stage") {
+    prospects = [...prospects].sort(
+      (a, b) => PROSPECT_STAGES.indexOf(a.stage) - PROSPECT_STAGES.indexOf(b.stage),
+    );
+  }
+
+  return prospects;
 }
 
 export async function getProspect(prospectId: string): Promise<Prospect | null> {
