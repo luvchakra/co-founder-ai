@@ -53,7 +53,7 @@ export default async function DashboardPage() {
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="website">Website</Label>
-            <Input id="website" name="website" type="url" placeholder="https://" />
+            <Input id="website" name="website" type="text" placeholder="https://" />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="industry">Industry</Label>

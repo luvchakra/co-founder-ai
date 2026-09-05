@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentAccount } from "@/lib/tenancy/queries";
+import { getCurrentAccount, listBusinesses, listProducts } from "@/lib/tenancy/queries";
+import type { Product } from "@/lib/tenancy/types";
 import { signOut } from "@/app/(auth)/actions";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { Sidebar } from "@/components/tenancy/sidebar";
 
 export default async function DashboardLayout({
   children,
@@ -17,6 +19,11 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const account = await getCurrentAccount();
+  const businesses = account ? await listBusinesses(account.id) : [];
+  const productsByBusiness: Record<string, Product[]> = {};
+  for (const business of businesses) {
+    productsByBusiness[business.id] = await listProducts(business.id);
+  }
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -36,7 +43,10 @@ export default async function DashboardLayout({
           </form>
         </div>
       </header>
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div className="flex flex-1">
+        <Sidebar businesses={businesses} productsByBusiness={productsByBusiness} />
+        <div className="flex flex-1 flex-col">{children}</div>
+      </div>
     </div>
   );
 }

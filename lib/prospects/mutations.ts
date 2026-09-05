@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeUrl } from "@/lib/url";
 import type { Prospect, ProspectStatus } from "./types";
 
 export type ProspectInput = {
@@ -12,8 +13,7 @@ export type ProspectInput = {
 
 export function extractDomain(url: string): string | null {
   try {
-    const withProtocol = url.startsWith("http") ? url : `https://${url}`;
-    return new URL(withProtocol).hostname.replace(/^www\./, "");
+    return new URL(normalizeUrl(url)).hostname.replace(/^www\./, "");
   } catch {
     return null;
   }

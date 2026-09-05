@@ -266,7 +266,7 @@ export default async function ProspectDetailPage({
             <Input
               id="website"
               name="website"
-              type="url"
+              type="text"
               defaultValue={prospect.website ?? ""}
             />
           </div>
@@ -680,7 +680,7 @@ export default async function ProspectDetailPage({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
-              <Input id="linkedinUrl" name="linkedinUrl" type="url" />
+              <Input id="linkedinUrl" name="linkedinUrl" type="text" />
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="phone">Phone</Label>

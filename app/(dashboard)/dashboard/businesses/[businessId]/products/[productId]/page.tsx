@@ -185,7 +185,7 @@ export default async function ProductPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="url">URL</Label>
-              <Input id="url" name="url" type="url" placeholder="https://" required />
+              <Input id="url" name="url" type="text" placeholder="https://" required />
             </div>
             <SubmitButton size="sm" className="self-start" pendingText="Fetching...">
               Fetch and add

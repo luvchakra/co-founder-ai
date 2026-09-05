@@ -1,16 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  getBusiness,
-  listProducts,
-  getCurrentAccount,
-  listBusinesses,
-} from "@/lib/tenancy/queries";
+import { getBusiness, listProducts } from "@/lib/tenancy/queries";
 import { createProductAction } from "@/app/(dashboard)/dashboard/actions";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BusinessSwitcher } from "@/components/tenancy/business-switcher";
 
 export default async function BusinessPage({
   params,
@@ -21,20 +15,11 @@ export default async function BusinessPage({
   const business = await getBusiness(businessId);
   if (!business) notFound();
 
-  const account = await getCurrentAccount();
-  const [products, businesses] = await Promise.all([
-    listProducts(business.id),
-    account ? listBusinesses(account.id) : Promise.resolve([]),
-  ]);
+  const products = await listProducts(business.id);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">{business.name}</h1>
-        {businesses.length > 1 ? (
-          <BusinessSwitcher businesses={businesses} currentBusinessId={business.id} />
-        ) : null}
-      </div>
+      <h1 className="text-xl font-semibold">{business.name}</h1>
 
       <section>
         <h2 className="font-medium">Products</h2>
@@ -70,7 +55,7 @@ export default async function BusinessPage({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="website">Website</Label>
-            <Input id="website" name="website" type="url" placeholder="https://" />
+            <Input id="website" name="website" type="text" placeholder="https://" />
           </div>
           <SubmitButton pendingText="Creating...">Create product</SubmitButton>
         </form>

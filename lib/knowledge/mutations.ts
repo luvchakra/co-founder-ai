@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeUrl } from "@/lib/url";
 import type { KnowledgeSourceType, ProductKnowledge } from "./types";
 
 const MAX_CONTENT_LENGTH = 15_000;
@@ -40,7 +41,7 @@ export async function addWebsiteKnowledgeSource(
   workspaceId: string,
   url: string,
 ): Promise<ProductKnowledge> {
-  const parsed = new URL(url);
+  const parsed = new URL(normalizeUrl(url));
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error("Only http(s) URLs are supported.");
   }
