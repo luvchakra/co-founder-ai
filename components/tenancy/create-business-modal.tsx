@@ -51,7 +51,7 @@ export function CreateBusinessModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8">
       <div
-        className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200 ${mounted ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-100 ${mounted ? "opacity-100" : "opacity-0"}`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -59,7 +59,7 @@ export function CreateBusinessModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-business-title"
-        className={`relative w-full max-w-md rounded-2xl border bg-popover p-6 shadow-2xl transition-all duration-200 ${
+        className={`relative w-full max-w-md rounded-2xl border bg-popover p-6 shadow-2xl transition-[transform,opacity] duration-100 ${
           mounted ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"
         }`}
       >
@@ -83,7 +83,7 @@ export function CreateBusinessModal({
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="create-business-description">Description (optional)</Label>
-            <Textarea id="create-business-description" name="description" rows={3} />
+            <Textarea id="create-business-description" name="description" rows={2} />
           </div>
           <div className="mt-2 flex justify-end gap-3">
             <Button type="button" variant="ghost" onClick={onClose}>

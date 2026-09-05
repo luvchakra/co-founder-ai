@@ -169,7 +169,7 @@ export default async function ProductPage({
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="content">What does this product do?</Label>
-              <Textarea id="content" name="content" rows={4} required />
+              <Textarea id="content" name="content" rows={2} required />
             </div>
             <SubmitButton size="sm" className="self-start" pendingText="Adding...">
               Add

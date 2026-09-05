@@ -67,7 +67,7 @@ export function OnboardingWizard({ accountId }: { accountId: string }) {
             id="productDescription"
             value={productDescription}
             onChange={(e) => setProductDescription(e.target.value)}
-            rows={5}
+            rows={2}
             placeholder="e.g. A tool that helps small e-commerce shops automate their return requests..."
             autoFocus
           />
@@ -98,7 +98,7 @@ export function OnboardingWizard({ accountId }: { accountId: string }) {
             name="targetAudience"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
-            rows={4}
+            rows={2}
             placeholder="e.g. Small online stores doing $10k-100k/month in sales..."
             autoFocus
           />

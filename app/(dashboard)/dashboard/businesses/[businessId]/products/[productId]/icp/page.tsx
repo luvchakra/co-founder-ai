@@ -147,7 +147,7 @@ function ListField({
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={name}>{label}</Label>
-      <Textarea id={name} name={name} rows={4} defaultValue={toLines(defaultValue)} />
+      <Textarea id={name} name={name} rows={2} defaultValue={toLines(defaultValue)} />
     </div>
   );
 }

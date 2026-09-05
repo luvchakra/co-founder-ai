@@ -43,7 +43,7 @@ export default async function ImportProspectsPage({
           <Textarea
             id="csv"
             name="csv"
-            rows={10}
+            rows={4}
             required
             placeholder={"company_name,website,industry\nAcme Inc,https://acme.com,Banking"}
           />
