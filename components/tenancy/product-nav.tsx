@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const NOTCH = 14;
 
-type StageId = "overview" | "icp" | "prospects" | "usage";
+type StageId = "overview" | "icp" | "prospects" | "conversions";
 
 /** Chevron-shaped tab: a point on the right (unless last) and a matching notch cut into
  * the left (unless first), so consecutive tabs interlock into one continuous arrow strip
@@ -29,8 +29,8 @@ export function ProductNav({
   basePath: string;
   /** Real workflow progress (profile generated, ICP exists, prospects added) -- shown as
    * a checkmark on any non-current stage that's already been reached, distinct from
-   * "isActive" (which tab you're currently viewing). Usage has no completion concept, so
-   * it's omitted here and stays neutral unless it's the current tab. */
+   * "isActive" (which tab you're currently viewing). Conversions has no completion
+   * concept, so it's omitted here and stays neutral unless it's the current tab. */
   completed?: Partial<Record<StageId, boolean>>;
 }) {
   const pathname = usePathname();
@@ -38,7 +38,7 @@ export function ProductNav({
     { id: "overview", href: basePath, label: "Overview" },
     { id: "icp", href: `${basePath}/icp`, label: "ICP" },
     { id: "prospects", href: `${basePath}/prospects`, label: "Prospects" },
-    { id: "usage", href: `${basePath}/usage`, label: "Usage" },
+    { id: "conversions", href: `${basePath}/conversions`, label: "Conversions" },
   ];
 
   const activeIndex = tabs.findIndex((tab) =>

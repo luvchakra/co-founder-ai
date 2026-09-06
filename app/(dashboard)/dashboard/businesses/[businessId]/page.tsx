@@ -26,6 +26,9 @@ export default async function BusinessPage({
       <Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }, { label: business.name }]} />
 
       <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Business
+        </span>
         <EditableName
           name={business.name}
           action={renameBusinessAction.bind(null, business.id)}

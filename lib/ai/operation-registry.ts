@@ -11,7 +11,8 @@ export type AiOperation =
   | "generate_outreach_strategy"
   | "generate_outreach_message"
   | "generate_reply"
-  | "classify_reply";
+  | "classify_reply"
+  | "chat";
 
 export type AiOperationSpec = {
   qualityTier: AiQualityTier;
@@ -31,6 +32,7 @@ const OPERATION_REGISTRY: Record<AiOperation, AiOperationSpec> = {
   generate_outreach_message: { qualityTier: "balanced", requiresWebSearch: false },
   generate_reply: { qualityTier: "balanced", requiresWebSearch: false },
   classify_reply: { qualityTier: "fast", requiresWebSearch: false },
+  chat: { qualityTier: "fast", requiresWebSearch: false },
 };
 
 export function getOperationSpec(operation: AiOperation): AiOperationSpec {

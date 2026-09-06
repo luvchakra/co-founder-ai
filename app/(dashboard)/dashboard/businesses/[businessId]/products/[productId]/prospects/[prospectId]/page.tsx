@@ -407,7 +407,7 @@ export default async function ProspectDetailPage({
         </form>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-md border p-4">
+      <section id="research" className="flex scroll-mt-4 flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Research</h2>
           <AiActionForm
@@ -484,7 +484,7 @@ export default async function ProspectDetailPage({
 
       <DependencyArrow />
 
-      <section className="flex flex-col gap-3 rounded-md border p-4">
+      <section id="score" className="flex scroll-mt-4 flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Score</h2>
           <form action={scoreProspectAction.bind(null, businessId, productId, prospect.id)}>
@@ -534,7 +534,7 @@ export default async function ProspectDetailPage({
 
       <DependencyArrow />
 
-      <section className="flex flex-col gap-3 rounded-md border p-4">
+      <section id="strategy" className="flex scroll-mt-4 flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Outreach strategy</h2>
           {strategy?.status === "approved" ? (
@@ -606,7 +606,7 @@ export default async function ProspectDetailPage({
 
       <DependencyArrow />
 
-      <section className="flex flex-col gap-3 rounded-md border p-4">
+      <section id="messages" className="flex scroll-mt-4 flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Messages</h2>
           {strategy?.status === "approved" ? (
@@ -644,7 +644,7 @@ export default async function ProspectDetailPage({
         )}
       </section>
 
-      <section className="flex flex-col gap-4 rounded-md border p-4">
+      <section id="conversations" className="flex scroll-mt-4 flex-col gap-4 rounded-md border p-4">
         <h2 className="font-medium">Conversations</h2>
         {conversations.length === 0 ? (
           <p className="text-sm text-muted-foreground">

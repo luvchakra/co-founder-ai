@@ -44,6 +44,9 @@ export default async function ProductLayout({
         ]}
       />
       <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          Product
+        </span>
         <EditableName
           name={product.name}
           action={renameProductAction.bind(null, businessId, productId)}

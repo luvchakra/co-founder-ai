@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { ProspectWithPipeline } from "@/lib/prospects/queries";
-import { PROSPECT_STAGE_LABEL } from "@/lib/prospects/pipeline";
+import { NEXT_ACTION_ANCHOR, PROSPECT_STAGE_LABEL } from "@/lib/prospects/pipeline";
 
 /**
  * Each row is a "stretched link" (a transparent, absolutely-positioned Link filling the
@@ -138,7 +138,18 @@ export function ProspectsTable({
                     </span>
                   ) : null}
                 </td>
-                <td className="py-2 pr-4 text-muted-foreground">{p.nextAction ?? "—"}</td>
+                <td className="relative z-10 py-2 pr-4">
+                  {p.nextAction ? (
+                    <Link
+                      href={`${basePath}/${p.id}#${NEXT_ACTION_ANCHOR[p.nextAction] ?? ""}`}
+                      className="rounded-md border bg-background px-2 py-1 text-xs font-medium hover:bg-accent"
+                    >
+                      {p.nextAction}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

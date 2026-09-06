@@ -4,38 +4,36 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * CoFounderAI UI & CTA Enhancement doc §1: the approved landing page look (deep charcoal +
- * electric violet accent) is now the single design system for the whole application, not
- * just marketing/auth. Rather than sprinkling `text-landing-*` classes through every
- * dashboard file, the base shadcn semantic tokens below carry the same values the
- * `.landing-theme` block already defined -- every existing `bg-background`,
- * `text-muted-foreground`, `border`, `bg-primary` etc. usage across the dashboard,
- * onboarding, and auth forms now renders in the same palette for free, with zero
- * unrelated files touched. There is no light/dark toggle in this product, so `:root` and
- * `.dark` intentionally carry identical values -- `.dark` still exists only so the
- * handful of existing `dark:` utility usages (status badges) resolve consistently once
- * `<html>` carries the `dark` class (see app/layout.tsx).
+ * CoFounderAI UI & CTA Enhancement doc §1's approved look (deep charcoal + electric
+ * violet accent) is the `.dark` palette below and remains the default. Settings >
+ * Appearance (components/theme/theme-toggle.tsx) lets a founder switch to a light
+ * palette or follow the OS setting instead -- `:root` now holds real light values, and
+ * `.dark` carries what used to be the only palette. Whichever is active, every existing
+ * `bg-background`, `text-muted-foreground`, `border`, `bg-primary` etc. usage across the
+ * dashboard, onboarding, and auth forms keeps working unchanged. The `.dark` class is
+ * applied to <html> by components/theme/theme-script.tsx (a pre-hydration blocking
+ * script, so there's no flash of the wrong theme) and kept in sync by ThemeProvider.
  */
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.15 0.012 290);
-  --foreground: oklch(0.98 0.002 290);
-  --card: oklch(0.19 0.014 290);
-  --card-foreground: oklch(0.98 0.002 290);
-  --popover: oklch(0.19 0.014 290);
-  --popover-foreground: oklch(0.98 0.002 290);
-  --primary: oklch(0.62 0.24 292);
+  --background: oklch(0.99 0.002 290);
+  --foreground: oklch(0.2 0.014 290);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.014 290);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.014 290);
+  --primary: oklch(0.55 0.22 292);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.24 0.016 290);
-  --secondary-foreground: oklch(0.98 0.002 290);
-  --muted: oklch(0.22 0.014 290);
-  --muted-foreground: oklch(0.72 0.01 290);
-  --accent: oklch(1 0 0 / 8%);
-  --accent-foreground: oklch(0.98 0.002 290);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.24 292 / 60%);
+  --secondary: oklch(0.95 0.008 290);
+  --secondary-foreground: oklch(0.2 0.014 290);
+  --muted: oklch(0.95 0.008 290);
+  --muted-foreground: oklch(0.48 0.02 290);
+  --accent: oklch(0 0 0 / 6%);
+  --accent-foreground: oklch(0.2 0.014 290);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: oklch(0.55 0.22 292 / 50%);
 }
 
 .dark {
@@ -120,11 +118,13 @@
     @apply border-border outline-ring/50;
   }
   html {
-    /* This is a single dark-themed product (no light mode) -- telling the browser that
-       explicitly is what actually themes chrome that CSS can't reach directly: a native
-       <select>'s open options popup, checkboxes/radios, and scrollbars. Without this
-       every native <select> here (prospects filters, status pickers) opens a
-       light-OS-styled popup no matter how the closed box itself is styled. */
+    /* Tells the browser which palette is active so it can theme chrome CSS can't reach
+       directly: a native <select>'s open options popup, checkboxes/radios, scrollbars.
+       Without this, native controls (prospects filters, status pickers) render with the
+       wrong OS-level styling whenever the active palette doesn't match the OS default. */
+    color-scheme: light;
+  }
+  .dark {
     color-scheme: dark;
   }
   body {
