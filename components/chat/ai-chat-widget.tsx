@@ -26,6 +26,7 @@ export function AiChatWidget() {
   const context = getActiveIdsFromPath(pathname);
 
   const [open, setOpen] = useState(false);
+  const [showBackToChat, setShowBackToChat] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [followUp, setFollowUp] = useState<string | null>(null);
   const [starterQuestions, setStarterQuestions] = useState<string[]>([]);
@@ -75,19 +76,45 @@ export function AiChatWidget() {
     send(input);
   }
 
+  /** Clicking a portal link inside a chat answer navigates there via next/link -- closing
+   * the panel first so the destination page isn't hidden behind it. The conversation isn't
+   * lost: this component lives in the persistent dashboard layout and doesn't unmount on
+   * navigation, so the "Back to chat" button just reopens the same history. */
+  function handleInternalLinkClick() {
+    setOpen(false);
+    setShowBackToChat(true);
+  }
+
   return (
     <>
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v);
+          setShowBackToChat(false);
+        }}
         aria-label="Ask the AI assistant"
         aria-expanded={open}
         className="shrink-0 text-muted-foreground hover:text-foreground"
       >
         <MessageCircle className="size-5" aria-hidden="true" />
       </Button>
+
+      {!open && showBackToChat ? (
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setShowBackToChat(false);
+          }}
+          className="fixed right-6 bottom-6 z-40 flex items-center gap-2 rounded-full border bg-background px-4 py-2.5 text-sm font-medium shadow-lg transition-colors hover:bg-accent"
+        >
+          <MessageCircle className="size-4 text-primary" aria-hidden="true" />
+          Back to chat
+        </button>
+      ) : null}
 
       {open ? (
         <>
@@ -150,7 +177,7 @@ export function AiChatWidget() {
                     }
                   >
                     {m.role === "assistant" ? (
-                      <ChatMarkdown text={m.content} />
+                      <ChatMarkdown text={m.content} onInternalLinkClick={handleInternalLinkClick} />
                     ) : (
                       <p className="whitespace-pre-wrap">{m.content}</p>
                     )}

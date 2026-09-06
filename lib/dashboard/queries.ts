@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { listBusinesses, listProducts, listWorkspacesForProducts } from "@/lib/tenancy/queries";
+import { createClient } from "@/lib/supabase/server";
 import type { Business, Product, Workspace } from "@/lib/tenancy/types";
 import {
   getProspectCountsForWorkspaces,
@@ -9,36 +9,51 @@ import { getWorkspaceUsageForWorkspaces } from "@/lib/usage/queries";
 
 export type AccountWorkspaceEntry = { workspace: Workspace; product: Product; business: Business };
 
+type ProductRow = Product & { workspaces: Workspace[] };
+type BusinessRow = Business & { products: ProductRow[] };
+
 /**
- * Every business/product/workspace on an account, resolved with a bounded number of
- * batched queries (one per table, not one per business or product) and memoized per
- * accountId for the lifetime of the request via React's cache(). app/(dashboard)/layout.tsx
- * (runs on every dashboard page) and the /dashboard page itself both need this full
- * account scan -- without memoizing by the one primitive argument they share (accountId),
- * each would run its own copy of the same set of queries back to back on every visit to
- * /dashboard specifically. cache() only dedupes by argument identity, and an array of ids
- * built fresh in each caller would never match another caller's array by reference, which
- * is why this takes accountId (a primitive, safe to key on) and does the array-building
- * internally rather than accepting a pre-built id list.
+ * Every business/product/workspace on an account, resolved with a single embedded
+ * PostgREST query (businesses -> products -> workspaces, following the foreign keys from
+ * supabase/migrations/20260904182540_tenancy_schema.sql) instead of three sequential
+ * round trips, and memoized per accountId for the lifetime of the request via React's
+ * cache(). Row Level Security still applies per table for embedded resources -- Supabase
+ * evaluates each nested table's own policies, so this reads exactly the same rows the
+ * three-query version did, just in one trip. app/(dashboard)/layout.tsx (runs on every
+ * dashboard page) and the /dashboard page itself both need this full account scan --
+ * without memoizing by the one primitive argument they share (accountId), each would run
+ * its own copy of this query back to back on every visit to /dashboard specifically.
+ * cache() only dedupes by argument identity, and an array of ids built fresh in each
+ * caller would never match another caller's array by reference, which is why this takes
+ * accountId (a primitive, safe to key on) rather than a pre-built id list.
  */
 export const getAccountWorkspaceEntries = cache(async (accountId: string) => {
-  const businesses = await listBusinesses(accountId);
-  const productLists = await Promise.all(businesses.map((b) => listProducts(b.id)));
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("businesses")
+    .select("*, products(*, workspaces(*))")
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: true, referencedTable: "products" });
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as BusinessRow[];
+
+  const businesses: Business[] = [];
   const productsByBusiness: Record<string, Product[]> = {};
-  businesses.forEach((b, i) => {
-    productsByBusiness[b.id] = productLists[i];
-  });
-
-  const allProducts = productLists.flat();
-  const workspaces = await listWorkspacesForProducts(allProducts.map((p) => p.id));
-  const workspaceByProductId = new Map(workspaces.map((w) => [w.product_id, w]));
-  const businessById = new Map(businesses.map((b) => [b.id, b]));
-
+  const allProducts: Product[] = [];
   const entries: AccountWorkspaceEntry[] = [];
-  for (const product of allProducts) {
-    const workspace = workspaceByProductId.get(product.id);
-    const business = businessById.get(product.business_id);
-    if (workspace && business) entries.push({ workspace, product, business });
+
+  for (const { products, ...business } of rows) {
+    businesses.push(business);
+    const businessProducts: Product[] = [];
+    for (const { workspaces, ...product } of products) {
+      businessProducts.push(product);
+      allProducts.push(product);
+      const workspace = workspaces[0];
+      if (workspace) entries.push({ workspace, product, business });
+    }
+    productsByBusiness[business.id] = businessProducts;
   }
 
   return { businesses, productsByBusiness, allProducts, entries };

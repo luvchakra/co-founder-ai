@@ -22,12 +22,14 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Independent round trips (auth revalidation vs. an RLS-scoped accounts query keyed off
+  // the session cookie, not off `user`) -- run them together instead of back to back.
+  const [{ data: { user } }, account] = await Promise.all([
+    supabase.auth.getUser(),
+    getCurrentAccount(),
+  ]);
   if (!user) redirect("/login");
 
-  const account = await getCurrentAccount();
   // getAccountWorkspaceEntries/getAccountUsageAndProspects are React cache()-wrapped by
   // accountId, so when the /dashboard page below also calls them in the same request,
   // it reuses this exact result instead of re-running its own full account scan.
