@@ -64,11 +64,16 @@ export function BusinessSelector({
                   role="menuitem"
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "flex items-center justify-between gap-2 truncate rounded-sm px-3 py-2 text-sm hover:bg-accent",
+                    "flex items-center justify-between gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent",
                     business.id === activeBusinessId && "font-medium",
                   )}
                 >
-                  <span className="truncate">{business.name}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {business.name}
+                    {business.description ? (
+                      <span className="text-muted-foreground"> ({business.description})</span>
+                    ) : null}
+                  </span>
                   {business.id === activeBusinessId ? (
                     <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
                   ) : null}

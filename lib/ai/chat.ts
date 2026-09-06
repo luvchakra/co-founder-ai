@@ -5,11 +5,13 @@ import {
   getFirstWorkspaceForAccount,
   getProduct,
   getWorkspaceForProduct,
+  listBusinesses,
   listProducts,
+  listWorkspacesForProducts,
 } from "@/lib/tenancy/queries";
 import type { Workspace } from "@/lib/tenancy/types";
 import { getIcpProfile } from "@/lib/icp/queries";
-import { listProspects } from "@/lib/prospects/queries";
+import { getProspectCountsForWorkspaces, listProspects } from "@/lib/prospects/queries";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
 import { chatSystemPrompt, CHAT_PROMPT_VERSION } from "@/prompts/chat/chat_v1";
 import { hashInput } from "./hash";
@@ -67,6 +69,44 @@ function buildStarterQuestions(input: {
 }
 
 /**
+ * One-paragraph account overview -- every business, its products, and a total prospect
+ * count -- so the assistant can answer questions that span beyond whatever page the
+ * founder happens to be on (e.g. "which of my businesses needs attention?" asked from
+ * /dashboard). Built from the same batched helpers the dashboard uses
+ * (listWorkspacesForProducts, getProspectCountsForWorkspaces): one query per table for
+ * the whole account rather than one per business/product, which is what keeps this cheap
+ * enough to compute on every chat turn instead of needing a separate cache layer.
+ * getCurrentAccount/listBusinesses/listProducts are already React cache()-wrapped, so
+ * calling them again here costs nothing extra when the current-context branch below also
+ * ends up calling them in the same request.
+ */
+async function buildAccountSummary(accountId: string): Promise<string> {
+  const businesses = await listBusinesses(accountId);
+  if (businesses.length === 0) {
+    return "The founder has no businesses set up yet.";
+  }
+
+  const productLists = await Promise.all(businesses.map((b) => listProducts(b.id)));
+  const allProducts = productLists.flat();
+  const workspaces = await listWorkspacesForProducts(allProducts.map((p) => p.id));
+  const countsByWorkspace = await getProspectCountsForWorkspaces(workspaces.map((w) => w.id));
+  const totalProspects = Object.values(countsByWorkspace).reduce((sum, c) => sum + c.total, 0);
+
+  const businessLines = businesses.slice(0, 10).map((business, i) => {
+    const products = productLists[i];
+    const productNames = products.length > 0 ? products.map((p) => p.name).join(", ") : "none yet";
+    return `- "${business.name}": products: ${productNames}`;
+  });
+
+  return [
+    `Account overview: ${businesses.length} business${businesses.length === 1 ? "" : "es"}, ` +
+      `${allProducts.length} product${allProducts.length === 1 ? "" : "s"} total, ` +
+      `${totalProspects} prospect${totalProspects === 1 ? "" : "s"} across the account.`,
+    ...businessLines,
+  ].join("\n");
+}
+
+/**
  * Turns the current page context into a short grounding summary plus a handful of
  * deterministic (no LLM call -- CLAUDE.md principle 4) starter questions reflecting
  * where the founder actually is in their pipeline. businessId/productId come from the
@@ -74,7 +114,12 @@ function buildStarterQuestions(input: {
  * queries), so a business/product the account doesn't own resolves to null exactly like
  * everywhere else in the app -- no separate authorization check needed here.
  */
-async function resolveChatContext(context: ChatPageContext): Promise<ResolvedChatContext> {
+async function resolveChatContext(
+  accountId: string,
+  context: ChatPageContext,
+): Promise<ResolvedChatContext> {
+  const accountSummary = await buildAccountSummary(accountId);
+
   if (context.productId) {
     const product = await getProduct(context.productId);
     if (product) {
@@ -94,6 +139,9 @@ async function resolveChatContext(context: ChatPageContext): Promise<ResolvedCha
         const basePath = `/dashboard/businesses/${business.id}/products/${product.id}`;
 
         const contextText = [
+          accountSummary,
+          "",
+          `Currently viewing:`,
           `Business: "${business.name}"`,
           `Product: "${product.name}"`,
           `Product profile: ${hasProfile ? "generated" : "not generated yet"}`,
@@ -125,6 +173,9 @@ async function resolveChatContext(context: ChatPageContext): Promise<ResolvedCha
     if (business) {
       const products = await listProducts(business.id);
       const contextText = [
+        accountSummary,
+        "",
+        "Currently viewing:",
         `Business: "${business.name}"`,
         products.length > 0
           ? `Products under this business: ${products.map((p) => p.name).join(", ")}`
@@ -151,7 +202,9 @@ async function resolveChatContext(context: ChatPageContext): Promise<ResolvedCha
 
   return {
     workspace: null,
-    contextText: "No specific business or product is currently selected.",
+    contextText: [accountSummary, "", "No specific business or product is currently selected."].join(
+      "\n",
+    ),
     starterQuestions: [
       "How does CoFounderAI help me find customers?",
       "What should I set up first?",
@@ -162,7 +215,9 @@ async function resolveChatContext(context: ChatPageContext): Promise<ResolvedCha
 /** Starter questions shown when the chat panel opens with no messages yet -- see
  * components/chat/ai-chat-widget.tsx. */
 export async function getChatStarterQuestions(context: ChatPageContext): Promise<string[]> {
-  const resolved = await resolveChatContext(context);
+  const account = await getCurrentAccount();
+  if (!account) return [];
+  const resolved = await resolveChatContext(account.id, context);
   return resolved.starterQuestions;
 }
 
@@ -183,7 +238,7 @@ export async function sendChatMessage(
     throw new AiProviderError("no_provider_connected", "Sign in to use the assistant.");
   }
 
-  const resolved = await resolveChatContext(context);
+  const resolved = await resolveChatContext(account.id, context);
   const workspace = resolved.workspace ?? (await getFirstWorkspaceForAccount(account.id));
   if (!workspace) {
     throw new AiProviderError(
