@@ -71,7 +71,7 @@ export function BusinessSelector({
                   <span className="min-w-0 flex-1 truncate">
                     {business.name}
                     {business.description ? (
-                      <span className="text-muted-foreground"> ({business.description})</span>
+                      <span className="text-muted-foreground"> - {business.description}</span>
                     ) : null}
                   </span>
                   {business.id === activeBusinessId ? (
