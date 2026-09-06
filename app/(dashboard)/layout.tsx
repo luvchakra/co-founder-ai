@@ -18,7 +18,6 @@ import { Sidebar } from "@/components/tenancy/sidebar";
 import { SidebarProvider } from "@/components/tenancy/sidebar-context";
 import { SidebarToggle } from "@/components/tenancy/sidebar-toggle";
 import { BusinessSelector } from "@/components/tenancy/business-selector";
-import { UserMenu } from "@/components/tenancy/user-menu";
 
 export default async function DashboardLayout({
   children,
@@ -60,7 +59,7 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <div className="flex min-h-full flex-1 flex-col">
-        <header className="relative z-50 flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background px-4 sm:gap-4 sm:px-6">
+        <header className="relative z-50 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 sm:gap-4 sm:px-6">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <SidebarToggle />
             <Link
@@ -84,17 +83,15 @@ export default async function DashboardLayout({
               />
             ) : null}
           </div>
-          <UserMenu
-            name={displayName}
-            email={user.email ?? ""}
-            avatarUrl={avatarUrl}
-            signOutAction={signOut}
-          />
         </header>
         <Sidebar
           businesses={businesses}
           productsByBusiness={productsByBusiness}
           creditsUsedPercent={creditsPercent}
+          accountName={displayName}
+          accountEmail={user.email ?? ""}
+          accountAvatarUrl={avatarUrl}
+          signOutAction={signOut}
         />
         <div className="flex flex-1 flex-col">{children}</div>
       </div>

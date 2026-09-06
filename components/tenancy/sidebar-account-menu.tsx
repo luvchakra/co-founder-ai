@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BarChart3, LogOut, Settings, User } from "lucide-react";
+import { BarChart3, ChevronsUpDown, LogOut, Settings, User } from "lucide-react";
 import { useDismiss } from "@/hooks/use-dismiss";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -17,22 +17,24 @@ function getInitials(name: string | null, email: string): string {
 }
 
 /**
- * Top-right avatar + account dropdown (CoFounderAI Header & Business Selector Enhancement
- * doc §1). "Help" is omitted -- no help center exists in this app yet, and the doc makes
- * it explicitly optional; shipping a link to nowhere would just be the dead-CTA problem
- * the earlier landing-page pass fixed. Usage is account-wide (every business/product),
- * which is why it lives here rather than under any one product's tabs.
+ * Account switcher pinned to the very bottom of the sidebar drawer (moved here from the
+ * header's top-right corner) -- the menu opens upward above its own trigger row since
+ * there's no room below it. Same destinations as before (Profile/Usage/Settings/Log
+ * out), just relocated.
  */
-export function UserMenu({
+export function SidebarAccountMenu({
   name,
   email,
   avatarUrl,
   signOutAction,
+  onNavigate,
 }: {
   name: string | null;
   email: string;
   avatarUrl: string | null;
   signOutAction: () => Promise<void>;
+  /** Also closes the sidebar drawer itself when a menu item navigates. */
+  onNavigate: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,29 +43,11 @@ export function UserMenu({
   const initials = getInitials(name, email);
 
   return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Account menu"
-        className="flex size-8 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground transition-[opacity,transform] duration-100 hover:opacity-90 active:scale-[0.94] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {avatarUrl ? (
-          // avatar_url is an arbitrary external URL (Google's profile photo host), not a
-          // local asset next/image's optimizer is configured for.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="size-full object-cover" />
-        ) : (
-          initials
-        )}
-      </button>
-
+    <div ref={containerRef} className="relative border-t">
       {open ? (
         <div
           role="menu"
-          className="fixed inset-x-3 top-14 z-50 mt-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-1 sm:w-64"
+          className="absolute inset-x-0 bottom-full mb-1 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
         >
           <div className="px-3 py-2">
             <p className="truncate text-sm font-medium">{name ?? email}</p>
@@ -75,7 +59,10 @@ export function UserMenu({
           <Link
             href="/dashboard/settings/profile"
             role="menuitem"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              onNavigate();
+            }}
             className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
           >
             <User className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -85,7 +72,10 @@ export function UserMenu({
           <Link
             href="/dashboard/settings/usage"
             role="menuitem"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              onNavigate();
+            }}
             className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
           >
             <BarChart3 className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -95,7 +85,10 @@ export function UserMenu({
           <Link
             href="/dashboard/settings/ai-provider"
             role="menuitem"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              onNavigate();
+            }}
             className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
           >
             <Settings className="size-4 text-muted-foreground" aria-hidden="true" />
@@ -116,6 +109,28 @@ export function UserMenu({
           </form>
         </div>
       ) : null}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left hover:bg-accent"
+      >
+        <span className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+          {avatarUrl ? (
+            // avatar_url is an arbitrary external URL (Google's profile photo host, or
+            // our own Storage URL), not a local asset next/image's optimizer is
+            // configured for.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" className="size-full object-cover" />
+          ) : (
+            initials
+          )}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium">{name ?? email}</span>
+        <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      </button>
     </div>
   );
 }
