@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -19,6 +18,7 @@ import { SidebarProvider } from "@/components/tenancy/sidebar-context";
 import { SidebarToggle } from "@/components/tenancy/sidebar-toggle";
 import { BusinessSelector } from "@/components/tenancy/business-selector";
 import { AiChatWidget } from "@/components/chat/ai-chat-widget";
+import { LogoMark } from "@/components/ui/logo-mark";
 
 export default async function DashboardLayout({
   children,
@@ -68,14 +68,7 @@ export default async function DashboardLayout({
               aria-label="co-founder-ai"
               className="flex shrink-0 items-center transition-transform duration-100 active:scale-95"
             >
-              <Image
-                src="/logo-mark.png"
-                alt=""
-                width={442}
-                height={350}
-                priority
-                className="h-8 w-auto"
-              />
+              <LogoMark className="h-8 w-auto" />
             </Link>
             {account ? (
               <BusinessSelector
