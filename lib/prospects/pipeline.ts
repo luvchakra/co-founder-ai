@@ -37,6 +37,21 @@ export const PROSPECT_STAGE_LABEL: Record<ProspectStage, string> = {
  * sequence never triggers it, short enough to actually surface neglected prospects. */
 export const STAGE_STUCK_THRESHOLD_DAYS = 7;
 
+/** Maps each literal `nextAction` string produced below to the `id` of the prospect
+ * detail page section (see the section elements on the prospect page) where that action
+ * is actually taken -- lets the prospects table link "Next action" straight there
+ * instead of just naming it. */
+export const NEXT_ACTION_ANCHOR: Record<string, string> = {
+  Research: "research",
+  Score: "score",
+  "Generate strategy": "strategy",
+  "Approve strategy": "strategy",
+  "Generate message": "messages",
+  "Review message": "messages",
+  "Retry send": "messages",
+  "Generate reply": "conversations",
+};
+
 export type ProspectPipelineSignals = {
   hasResearch: boolean;
   hasScore: boolean;

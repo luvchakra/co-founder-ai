@@ -128,6 +128,25 @@ export const getWorkspace = cache(async (
  * classifyReply's usage from the inbound email webhook -- without it, the RLS-scoped
  * client would see zero rows for a request that has no authenticated session.
  */
+/**
+ * First workspace found under an account (earliest-created business, earliest-created
+ * product) -- resolves the account's AI provider credential for account-wide features
+ * that aren't scoped to one workspace, like the header chat assistant, without a new
+ * account-scoped credential lookup: any workspace under the account already leads to the
+ * same account_id, and ai_runs/usage limits need some workspace to attribute the run to.
+ */
+export async function getFirstWorkspaceForAccount(accountId: string): Promise<Workspace | null> {
+  const businesses = await listBusinesses(accountId);
+  for (const business of businesses) {
+    const products = await listProducts(business.id);
+    for (const product of products) {
+      const workspace = await getWorkspaceForProduct(product.id);
+      if (workspace) return workspace;
+    }
+  }
+  return null;
+}
+
 export async function getAccountIdForWorkspace(
   workspaceId: string,
   client?: SupabaseClient,

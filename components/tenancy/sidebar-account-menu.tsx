@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { BarChart3, ChevronsUpDown, LogOut, Settings, User } from "lucide-react";
+import { BarChart3, ChevronsUpDown, LogOut, Settings, SunMoon, User } from "lucide-react";
 import { useDismiss } from "@/hooks/use-dismiss";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -80,6 +80,19 @@ export function SidebarAccountMenu({
           >
             <BarChart3 className="size-4 text-muted-foreground" aria-hidden="true" />
             Usage
+          </Link>
+
+          <Link
+            href="/dashboard/settings/appearance"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onNavigate();
+            }}
+            className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
+          >
+            <SunMoon className="size-4 text-muted-foreground" aria-hidden="true" />
+            Appearance
           </Link>
 
           <Link

@@ -18,6 +18,7 @@ import { Sidebar } from "@/components/tenancy/sidebar";
 import { SidebarProvider } from "@/components/tenancy/sidebar-context";
 import { SidebarToggle } from "@/components/tenancy/sidebar-toggle";
 import { BusinessSelector } from "@/components/tenancy/business-selector";
+import { AiChatWidget } from "@/components/chat/ai-chat-widget";
 
 export default async function DashboardLayout({
   children,
@@ -83,6 +84,7 @@ export default async function DashboardLayout({
               />
             ) : null}
           </div>
+          <AiChatWidget />
         </header>
         <Sidebar
           businesses={businesses}
