@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
-import { getBusiness, getProduct } from "@/lib/tenancy/queries";
+import { getBusiness, getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
+import { getIcpProfile } from "@/lib/icp/queries";
+import { getProspectCounts } from "@/lib/prospects/queries";
 import { ProductNav } from "@/components/tenancy/product-nav";
 import { EditableName } from "@/components/tenancy/editable-name";
 import { ExpandableText } from "@/components/ui/expandable-text";
@@ -20,7 +22,17 @@ export default async function ProductLayout({
   const business = await getBusiness(businessId);
   if (!business) notFound();
 
+  const workspace = await getWorkspaceForProduct(product.id);
+  const [icp, prospectCounts] = workspace
+    ? await Promise.all([getIcpProfile(workspace.id), getProspectCounts(workspace.id)])
+    : [null, null];
+
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}`;
+  const completed = {
+    overview: Boolean(product.product_profile),
+    icp: Boolean(icp),
+    prospects: Boolean(prospectCounts && prospectCounts.total > 0),
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
@@ -41,7 +53,7 @@ export default async function ProductLayout({
           <ExpandableText text={product.description} className="text-sm text-muted-foreground" />
         ) : null}
       </div>
-      <ProductNav basePath={basePath} />
+      <ProductNav basePath={basePath} completed={completed} />
       {children}
     </main>
   );
