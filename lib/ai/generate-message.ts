@@ -90,8 +90,6 @@ export async function generateOutreachMessage(strategyId: string): Promise<Messa
       durationMs: Date.now() - startedAt,
     });
 
-    const content = draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body;
-
     const { data, error } = await supabase
       .from("messages")
       .insert({
@@ -100,7 +98,8 @@ export async function generateOutreachMessage(strategyId: string): Promise<Messa
         contact_id: strategy.contact_id,
         channel: strategy.channel,
         direction: "outbound",
-        content,
+        subject: draft.subject,
+        content: draft.body,
         status: "draft",
       })
       .select()

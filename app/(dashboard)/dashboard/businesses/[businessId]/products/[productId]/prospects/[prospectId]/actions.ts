@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateProspect, updateProspectStatus } from "@/lib/prospects/mutations";
+import { updateProspect, updateProspectStatus, setProspectOutcome } from "@/lib/prospects/mutations";
 import type { ProspectStatus } from "@/lib/prospects/types";
-import { createContact, deleteContact } from "@/lib/contacts/mutations";
+import { createContact, updateContact, deleteContact } from "@/lib/contacts/mutations";
 import { researchProspect } from "@/lib/ai/research-prospect";
 import { scoreProspect } from "@/lib/scoring/score-prospect";
 import { generateOutreachStrategy } from "@/lib/ai/generate-strategy";
@@ -12,6 +12,7 @@ import { generateOutreachMessage } from "@/lib/ai/generate-message";
 import { generateReply } from "@/lib/ai/generate-reply";
 import {
   updateMessageContent,
+  updateMessageContact,
   approveMessage,
   markMessageSent,
   deleteMessage,
@@ -63,6 +64,24 @@ export async function addContactAction(
   formData: FormData,
 ) {
   await createContact(workspaceId, prospectId, {
+    firstName: String(formData.get("firstName") ?? ""),
+    lastName: String(formData.get("lastName") ?? ""),
+    jobTitle: String(formData.get("jobTitle") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    linkedinUrl: String(formData.get("linkedinUrl") ?? ""),
+    phone: String(formData.get("phone") ?? ""),
+  });
+  revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+export async function updateContactAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  contactId: string,
+  formData: FormData,
+) {
+  await updateContact(contactId, {
     firstName: String(formData.get("firstName") ?? ""),
     lastName: String(formData.get("lastName") ?? ""),
     jobTitle: String(formData.get("jobTitle") ?? ""),
@@ -146,7 +165,8 @@ export async function updateMessageContentAction(
   messageId: string,
   formData: FormData,
 ) {
-  await updateMessageContent(messageId, String(formData.get("content") ?? ""));
+  const subject = formData.has("subject") ? String(formData.get("subject")) : null;
+  await updateMessageContent(messageId, String(formData.get("content") ?? ""), subject);
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }
 
@@ -181,8 +201,12 @@ export async function approveAndSendMessageAction(
   productId: string,
   prospectId: string,
   messageId: string,
+  _prevState: AiActionState,
+  formData: FormData,
 ): Promise<AiActionState> {
   return runAiAction(async () => {
+    const contactId = String(formData.get("contactId") ?? "") || null;
+    if (contactId) await updateMessageContact(messageId, contactId);
     await approveMessage(messageId);
     await sendMessage(messageId);
     revalidatePath(prospectPath(businessId, productId, prospectId));
@@ -196,8 +220,12 @@ export async function sendMessageAction(
   productId: string,
   prospectId: string,
   messageId: string,
+  _prevState: AiActionState,
+  formData: FormData,
 ): Promise<AiActionState> {
   return runAiAction(async () => {
+    const contactId = String(formData.get("contactId") ?? "") || null;
+    if (contactId) await updateMessageContact(messageId, contactId);
     await sendMessage(messageId);
     revalidatePath(prospectPath(businessId, productId, prospectId));
   });
@@ -225,13 +253,21 @@ export async function generateReplyAction(
   });
 }
 
+/** Closing a thread is also the moment the founder records the deal outcome (docs:
+ * Conversations redesign) -- the two submit buttons in the form share this one action,
+ * each contributing its own `outcome` value. */
 export async function closeConversationAction(
   businessId: string,
   productId: string,
   prospectId: string,
   conversationId: string,
+  formData: FormData,
 ) {
+  const outcome = String(formData.get("outcome") ?? "");
   await closeConversation(conversationId);
+  if (outcome === "won" || outcome === "lost") {
+    await setProspectOutcome(prospectId, outcome);
+  }
   revalidatePath(prospectPath(businessId, productId, prospectId));
 }
 

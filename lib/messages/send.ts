@@ -2,17 +2,10 @@ import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { listContacts } from "@/lib/contacts/queries";
 import { getProspect } from "@/lib/prospects/queries";
+import { getBusiness, getProduct, getWorkspace } from "@/lib/tenancy/queries";
 import { getOrCreateConversation, markConversationAwaitingReply } from "@/lib/conversations/mutations";
+import { renderEmailHtml, renderEmailText } from "@/lib/email/render";
 import type { Message } from "./types";
-
-/** generateOutreachMessage() stores "Subject: X\n\nBody" when the draft has a subject
- * line (see lib/ai/generate-message.ts), and just the body when it doesn't. Split that
- * back apart for the actual send instead of mailing the "Subject:" line as body text. */
-function parseEmailContent(content: string): { subject: string | null; body: string } {
-  const match = content.match(/^Subject: (.*)\n\n([\s\S]*)$/);
-  if (!match) return { subject: null, body: content };
-  return { subject: match[1], body: match[2] };
-}
 
 /** Sends an approved outbound email via Resend and records the real outcome on the
  * message row (docs/prospects-pipeline-redesign-requirements.md R1/R2) -- status
@@ -54,13 +47,24 @@ export async function sendMessage(messageId: string): Promise<Message> {
     );
   }
 
-  const { subject, body } = parseEmailContent(message.content);
+  const workspace = await getWorkspace(message.workspace_id);
+  const product = workspace ? await getProduct(workspace.product_id) : null;
+  const business = product ? await getBusiness(product.business_id) : null;
+  const brandName = product?.name ?? business?.name ?? prospect.company_name;
+  const websiteUrl = product?.website ?? business?.website ?? null;
+
   const resend = new Resend(apiKey);
   const result = await resend.emails.send({
     from: fromAddress,
     to: toEmail,
-    subject: subject ?? `Quick note for ${prospect.company_name}`,
-    text: body,
+    subject: message.subject ?? `Quick note for ${prospect.company_name}`,
+    text: renderEmailText(message.content),
+    html: renderEmailHtml({
+      brandName,
+      body: message.content,
+      websiteUrl,
+      replyToEmail: fromAddress,
+    }),
   });
 
   if (result.error) {

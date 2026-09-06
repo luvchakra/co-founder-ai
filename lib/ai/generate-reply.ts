@@ -101,8 +101,6 @@ export async function generateReply(conversationId: string): Promise<Message> {
       durationMs: Date.now() - startedAt,
     });
 
-    const content = draft.subject ? `Subject: ${draft.subject}\n\n${draft.body}` : draft.body;
-
     const { data, error } = await supabase
       .from("messages")
       .insert({
@@ -112,7 +110,8 @@ export async function generateReply(conversationId: string): Promise<Message> {
         conversation_id: conversation.id,
         channel: conversation.channel,
         direction: "outbound",
-        content,
+        subject: draft.subject,
+        content: draft.body,
         status: "draft",
       })
       .select()

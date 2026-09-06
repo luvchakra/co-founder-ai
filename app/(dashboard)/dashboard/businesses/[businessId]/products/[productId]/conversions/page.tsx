@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspects } from "@/lib/prospects/queries";
@@ -25,6 +26,37 @@ export default async function ConversionsPage({
 
   const prospects = await listProspects(workspace.id);
   const funnel = computeConversionFunnel(prospects);
+  const customers = prospects.filter((p) => p.outcome === "won");
+  const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
-  return <ConversionFunnelPanel funnel={funnel} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <ConversionFunnelPanel funnel={funnel} wonCount={customers.length} />
+
+      <div className="flex flex-col gap-3 rounded-md border p-4">
+        <h3 className="font-medium">Customers</h3>
+        {customers.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No won deals yet -- mark a conversation &quot;Won&quot; when it closes to add one here.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {customers.map((c) => (
+              <li key={c.id}>
+                <Link
+                  href={`${basePath}/${c.id}`}
+                  className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm hover:bg-accent"
+                >
+                  <span className="font-medium">{c.company_name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    Closed {new Date(c.lastActivityAt).toLocaleDateString()}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
 }

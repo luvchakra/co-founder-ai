@@ -3,10 +3,15 @@ import type { Prospect } from "@/lib/prospects/types";
 import type { Contact } from "@/lib/contacts/types";
 import type { MessageChannel, MessageClassification } from "@/lib/messages/types";
 
-export const GENERATE_REPLY_PROMPT_VERSION = "generate_reply_v1";
+export const GENERATE_REPLY_PROMPT_VERSION = "generate_reply_v2";
 
 const CHANNEL_GUIDANCE: Record<MessageChannel, string> = {
-  email: "A short, professional email reply. Include a subject line (prefix with 'Re: ' if natural).",
+  email:
+    "A short, professional email reply. Include a subject line (prefix with 'Re: ' if " +
+    "natural; subject only -- never repeat it in the body). Write the body as 2-4 short " +
+    "paragraphs separated by a blank line, not one block of text. Wrap the single phrase " +
+    "or sentence the prospect will care about most in **double asterisks** to emphasize " +
+    "it -- exactly one such phrase, not every sentence.",
   linkedin: "A short LinkedIn DM reply. Under 80 words. No subject line.",
   whatsapp: "A very short, casual WhatsApp reply. Under 40 words. No subject line.",
 };

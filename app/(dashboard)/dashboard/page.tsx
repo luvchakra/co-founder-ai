@@ -75,6 +75,7 @@ export default async function DashboardPage({
   const slicedWorkspaceIds = new Set(slicedEntries.map((e) => e.workspace.id));
   const slicedProspects = prospects.filter((p) => slicedWorkspaceIds.has(p.workspace_id));
   const funnel = computeConversionFunnel(slicedProspects);
+  const wonCount = slicedProspects.filter((p) => p.outcome === "won").length;
 
   const productsForFilter = businessFilter
     ? workspaceEntries.filter((e) => e.business.id === businessFilter)
@@ -147,7 +148,7 @@ export default async function DashboardPage({
             start building a GTM workspace for a product.
           </p>
         ) : (
-          <ConversionFunnelPanel funnel={funnel} />
+          <ConversionFunnelPanel funnel={funnel} wonCount={wonCount} />
         )}
       </section>
     </main>

@@ -3,10 +3,16 @@ import type { Prospect } from "@/lib/prospects/types";
 import type { Contact } from "@/lib/contacts/types";
 import type { OutreachStrategy } from "@/lib/outreach/types";
 
-export const GENERATE_MESSAGE_PROMPT_VERSION = "generate_message_v1";
+export const GENERATE_MESSAGE_PROMPT_VERSION = "generate_message_v2";
 
 const CHANNEL_GUIDANCE: Record<OutreachStrategy["channel"], string> = {
-  email: "A short, professional cold email. 80-150 words. Include a subject line.",
+  email:
+    "A short, professional cold email. 80-150 words. Include a subject line (subject " +
+    "only -- never repeat it in the body). Write the body as 2-4 short paragraphs " +
+    "separated by a blank line, not one block of text. Wrap the single phrase or " +
+    "sentence the prospect will care about most (the specific benefit or result, not a " +
+    "generic claim) in **double asterisks** so it can be emphasized -- exactly one such " +
+    "phrase, not every sentence.",
   linkedin:
     "A short LinkedIn connection/DM message. Under 80 words, casual but professional. No subject line.",
   whatsapp:

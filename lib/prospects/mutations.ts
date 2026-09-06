@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { normalizeUrl } from "@/lib/url";
-import type { Prospect, ProspectStatus } from "./types";
+import type { Prospect, ProspectOutcome, ProspectStatus } from "./types";
 
 export type ProspectInput = {
   companyName: string;
@@ -77,6 +77,23 @@ export async function updateProspectStatus(
   const { data, error } = await supabase
     .from("prospects")
     .update({ status })
+    .eq("id", prospectId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Set when a conversation with this prospect is closed (docs: Conversations redesign)
+ * -- "won" is what the Conversions tab counts as a customer. */
+export async function setProspectOutcome(
+  prospectId: string,
+  outcome: ProspectOutcome,
+): Promise<Prospect> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospects")
+    .update({ outcome })
     .eq("id", prospectId)
     .select()
     .single();

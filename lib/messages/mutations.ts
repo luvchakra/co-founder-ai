@@ -5,10 +5,12 @@ import {
 } from "@/lib/conversations/mutations";
 import type { Message } from "./types";
 
-/** Editing content resets an approved message back to draft -- it needs re-approval. */
+/** Editing content resets an approved message back to draft -- it needs re-approval.
+ * `subject` is only meaningful for email; pass null/undefined for other channels. */
 export async function updateMessageContent(
   messageId: string,
   content: string,
+  subject?: string | null,
 ): Promise<Message> {
   const trimmed = content.trim();
   if (!trimmed) throw new Error("Message content is required.");
@@ -16,7 +18,25 @@ export async function updateMessageContent(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("messages")
-    .update({ content: trimmed, status: "draft" })
+    .update({ content: trimmed, subject: subject?.trim() || null, status: "draft" })
+    .eq("id", messageId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Lets the founder pick which of the prospect's contacts an outbound email goes to
+ * before sending -- sendMessage (lib/messages/send.ts) already resolves the recipient
+ * from `contact_id` when it's set, so this is the only piece that was missing. */
+export async function updateMessageContact(
+  messageId: string,
+  contactId: string | null,
+): Promise<Message> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("messages")
+    .update({ contact_id: contactId })
     .eq("id", messageId)
     .select()
     .single();
