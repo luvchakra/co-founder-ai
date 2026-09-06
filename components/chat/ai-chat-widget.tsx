@@ -7,11 +7,7 @@ import { useDismiss } from "@/hooks/use-dismiss";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
-import {
-  getChatHistoryAction,
-  getChatStarterQuestionsAction,
-  sendChatMessageAction,
-} from "@/app/(dashboard)/chat-actions";
+import { getChatPanelDataAction, sendChatMessageAction } from "@/app/(dashboard)/chat-actions";
 import type { ChatMessage } from "@/lib/ai/chat";
 import { ChatMarkdown } from "./chat-markdown";
 
@@ -59,18 +55,16 @@ export function AiChatWidget() {
   useEffect(() => {
     if (!open || loadedThreadKey === threadKey) return;
     let cancelled = false;
-    Promise.all([getChatHistoryAction(context), getChatStarterQuestionsAction(context)]).then(
-      ([history, questions]) => {
-        if (cancelled) return;
-        setLoadedThreadKey(threadKey);
-        if (history.messages.length > 0) {
-          setMessages(history.messages);
-          setFollowUp(history.followUp);
-        } else {
-          setStarterQuestions(questions);
-        }
-      },
-    );
+    getChatPanelDataAction(context).then((data) => {
+      if (cancelled) return;
+      setLoadedThreadKey(threadKey);
+      if (data.messages.length > 0) {
+        setMessages(data.messages);
+        setFollowUp(data.followUp);
+      } else {
+        setStarterQuestions(data.starterQuestions);
+      }
+    });
     return () => {
       cancelled = true;
     };

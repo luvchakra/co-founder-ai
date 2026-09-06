@@ -39,7 +39,7 @@ type ResolvedChatContext = {
    * only a business is in view (null there only if that business has no products yet --
    * see getFirstWorkspaceForBusiness), and null when there's no business/product context
    * at all (e.g. the founder is on /dashboard). Either null case falls back to the
-   * account's first workspace overall (see sendChatMessage/getChatHistory). */
+   * account's first workspace overall (see sendChatMessage/getChatPanelData). */
   workspace: Workspace | null;
   contextText: string;
   starterQuestions: string[];
@@ -257,37 +257,38 @@ async function resolveChatContext(
   };
 }
 
-/** Starter questions shown when the chat panel opens with no history yet -- see
- * components/chat/ai-chat-widget.tsx. */
-export async function getChatStarterQuestions(context: ChatPageContext): Promise<string[]> {
-  const account = await getCurrentAccount();
-  if (!account) return [];
-  const resolved = await resolveChatContext(account.id, context);
-  return resolved.starterQuestions;
-}
-
 /**
- * Resolves the same workspace sendChatMessage would attribute a new turn to, and returns
- * whatever's already persisted for it (supabase/migrations/20260906070000_chat_messages_schema.sql)
- * -- the widget loads this once per business/product it's opened against so a founder's
- * conversation survives a reload or reopening the panel later. `followUp` is only the
- * most recent assistant turn's, matching what the widget shows below the last message.
+ * Everything the chat panel needs to open against a business/product: persisted history
+ * (supabase/migrations/20260906070000_chat_messages_schema.sql) for the same workspace
+ * sendChatMessage would attribute a new turn to, plus deterministic starter questions for
+ * when there isn't any yet. Combined into one call (rather than a separate
+ * getChatHistory/getChatStarterQuestions pair, which is what this used to be) because
+ * both need the exact same resolveChatContext() result -- calling it from two separate
+ * server actions meant paying for buildAccountSummary's several queries twice on every
+ * single panel open, which was the main reason opening the chat felt slow. `followUp` is
+ * only the most recent assistant turn's, matching what the widget shows below the last
+ * message.
  */
-export async function getChatHistory(
-  context: ChatPageContext,
-): Promise<{ messages: ChatMessage[]; followUp: string | null }> {
+export async function getChatPanelData(context: ChatPageContext): Promise<{
+  messages: ChatMessage[];
+  followUp: string | null;
+  starterQuestions: string[];
+}> {
   const account = await getCurrentAccount();
-  if (!account) return { messages: [], followUp: null };
+  if (!account) return { messages: [], followUp: null, starterQuestions: [] };
 
   const resolved = await resolveChatContext(account.id, context);
   const workspace = resolved.workspace ?? (await getFirstWorkspaceForAccount(account.id));
-  if (!workspace) return { messages: [], followUp: null };
+  if (!workspace) {
+    return { messages: [], followUp: null, starterQuestions: resolved.starterQuestions };
+  }
 
   const history = await listChatMessages(workspace.id);
   const lastAssistant = [...history].reverse().find((m) => m.role === "assistant");
   return {
     messages: history.map(({ role, content }) => ({ role, content })),
     followUp: lastAssistant?.followUp ?? null,
+    starterQuestions: resolved.starterQuestions,
   };
 }
 
@@ -299,7 +300,7 @@ export async function getChatHistory(
  * the ai_runs cost-ledger entry, usage-limit check, and now the persisted chat history
  * too, so all three stay consistent about which workspace "this conversation" belongs to.
  * `messages` is the full transcript the client is holding (including whatever
- * getChatHistory returned it originally) with exactly one new user turn appended --
+ * getChatPanelData returned it originally) with exactly one new user turn appended --
  * only that new turn and the assistant's reply get written here, never the whole array,
  * or reloading history and sending a reply would double up every prior turn.
  */

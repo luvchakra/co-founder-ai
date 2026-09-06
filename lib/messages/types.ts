@@ -18,6 +18,9 @@ export type Message = {
   conversation_id: string | null;
   channel: MessageChannel;
   direction: MessageDirection;
+  /** Email subject line, kept separate from `content` (the body) so it never needs to be
+   * parsed back out of a concatenated string at send time. Null for linkedin/whatsapp. */
+  subject: string | null;
   content: string;
   status: MessageStatus;
   classification: MessageClassification | null;

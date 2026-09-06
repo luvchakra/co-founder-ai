@@ -1,8 +1,7 @@
 "use server";
 
 import {
-  getChatHistory,
-  getChatStarterQuestions,
+  getChatPanelData,
   sendChatMessage,
   type ChatMessage,
   type ChatPageContext,
@@ -26,24 +25,18 @@ export async function sendChatMessageAction(
   }
 }
 
-export async function getChatStarterQuestionsAction(
-  context: ChatPageContext,
-): Promise<string[]> {
+/** One call for everything the panel needs to open against a business/product --
+ * history, follow-up, and starter questions -- instead of two separate actions that each
+ * independently resolved the same context (see getChatPanelData's own comment). */
+export async function getChatPanelDataAction(context: ChatPageContext): Promise<{
+  messages: ChatMessage[];
+  followUp: string | null;
+  starterQuestions: string[];
+}> {
   try {
-    return await getChatStarterQuestions(context);
+    return await getChatPanelData(context);
   } catch (error) {
-    console.error("[chat] getChatStarterQuestionsAction failed:", error);
-    return [];
-  }
-}
-
-export async function getChatHistoryAction(
-  context: ChatPageContext,
-): Promise<{ messages: ChatMessage[]; followUp: string | null }> {
-  try {
-    return await getChatHistory(context);
-  } catch (error) {
-    console.error("[chat] getChatHistoryAction failed:", error);
-    return { messages: [], followUp: null };
+    console.error("[chat] getChatPanelDataAction failed:", error);
+    return { messages: [], followUp: null, starterQuestions: [] };
   }
 }

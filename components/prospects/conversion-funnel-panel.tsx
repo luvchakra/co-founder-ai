@@ -3,9 +3,17 @@ import type { ConversionFunnel } from "@/lib/prospects/pipeline";
 /** Renders a computed ConversionFunnel (lib/prospects/pipeline.ts) as KPI cards plus a
  * per-stage bar chart -- shared by the per-product Conversions tab and the account-wide
  * dashboard summary so both look and compute identically. */
-export function ConversionFunnelPanel({ funnel }: { funnel: ConversionFunnel }) {
+export function ConversionFunnelPanel({
+  funnel,
+  wonCount = 0,
+}: {
+  funnel: ConversionFunnel;
+  /** Prospects with outcome "won" -- the account's actual customer count. Separate from
+   * the funnel's "closed" stage, which only means a conversation ended (it says nothing
+   * about whether the deal was won or lost). */
+  wonCount?: number;
+}) {
   const { total, steps, replyRate, closeRate } = funnel;
-  const closedCount = steps.find((s) => s.stage === "closed")?.reached ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -19,8 +27,8 @@ export function ConversionFunnelPanel({ funnel }: { funnel: ConversionFunnel }) 
           <p className="mt-1 text-2xl font-semibold">{replyRate}%</p>
         </div>
         <div className="rounded-md border p-4">
-          <p className="text-xs text-muted-foreground">Closed / won</p>
-          <p className="mt-1 text-2xl font-semibold">{closedCount}</p>
+          <p className="text-xs text-muted-foreground">Customers (won)</p>
+          <p className="mt-1 text-2xl font-semibold">{wonCount}</p>
         </div>
         <div className="rounded-md border p-4">
           <p className="text-xs text-muted-foreground">Overall conversion</p>

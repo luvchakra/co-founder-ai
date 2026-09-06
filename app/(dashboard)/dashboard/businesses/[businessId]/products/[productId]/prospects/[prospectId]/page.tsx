@@ -16,6 +16,7 @@ import {
   PROSPECT_STAGE_LABEL,
 } from "@/lib/prospects/pipeline";
 import type { Message } from "@/lib/messages/types";
+import type { Contact } from "@/lib/contacts/types";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AiActionForm } from "@/components/ai/ai-action-form";
 import { Input } from "@/components/ui/input";
@@ -23,13 +24,15 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExpandableBox } from "@/components/ui/expandable-box";
-import { Briefcase, ChevronDown, Mail, MessageCircle } from "lucide-react";
+import { ContactRow } from "@/components/prospects/contact-row";
+import { Briefcase, ChevronDown, Mail, MessageCircle, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConversationChannel } from "@/lib/conversations/types";
 import {
   updateProspectAction,
   updateProspectStatusAction,
   addContactAction,
+  updateContactAction,
   deleteContactAction,
   researchProspectAction,
   scoreProspectAction,
@@ -69,6 +72,11 @@ const CONVERSATION_STATUS_LABEL: Record<string, string> = {
   closed: "Closed",
 };
 
+const OUTCOME_LABEL: Record<string, string> = {
+  won: "Won",
+  lost: "Lost",
+};
+
 const CHANNEL_ICON: Record<ConversationChannel, typeof Mail> = {
   email: Mail,
   linkedin: Briefcase,
@@ -101,22 +109,37 @@ function OutboundMessageCard({
   businessId,
   productId,
   prospectId,
-  hasContactEmail,
+  contacts,
   className,
 }: {
   message: Message;
   businessId: string;
   productId: string;
   prospectId: string;
-  /** Whether this prospect has any contact with an email on file -- gates sending for
-   * the email channel (docs/prospects-pipeline-redesign-requirements.md R1: "no contact
-   * email -> block Send with an inline prompt to add one"). */
-  hasContactEmail: boolean;
+  /** Every contact on this prospect -- used both to gate sending for the email channel
+   * (docs/prospects-pipeline-redesign-requirements.md R1: "no contact email -> block Send
+   * with an inline prompt to add one") and to let the founder pick which one an email
+   * actually goes to. */
+  contacts: Contact[];
   /** Lets the conversation thread (unlike the flat drafts list) align this card like a
    * chat bubble on its own side of the thread. */
   className?: string;
 }) {
   const isEmail = message.channel === "email";
+  const emailContacts = contacts.filter((c) => c.email);
+  const hasContactEmail = emailContacts.length > 0;
+  const defaultContactId = message.contact_id ?? emailContacts[0]?.id ?? "";
+
+  const contactSelect =
+    isEmail && hasContactEmail ? (
+      <Select name="contactId" defaultValue={defaultContactId} className="w-auto max-w-56">
+        {emailContacts.map((c) => (
+          <option key={c.id} value={c.id}>
+            {[c.first_name, c.last_name].filter(Boolean).join(" ") || c.email}
+          </option>
+        ))}
+      </Select>
+    ) : null;
 
   return (
     <li className={cn("flex flex-col gap-2 rounded-md border p-3 text-sm", className)}>
@@ -143,6 +166,15 @@ function OutboundMessageCard({
         )}
         className="flex flex-col gap-2"
       >
+        {isEmail ? (
+          message.status === "sent" ? (
+            message.subject ? (
+              <p className="font-medium">{message.subject}</p>
+            ) : null
+          ) : (
+            <Input name="subject" defaultValue={message.subject ?? ""} placeholder="Subject" />
+          )
+        ) : null}
         <Textarea
           name="content"
           defaultValue={message.content}
@@ -174,17 +206,35 @@ function OutboundMessageCard({
                   prospectId,
                   message.id,
                 )}
-                buttonLabel="Approve & send"
+                buttonLabel={
+                  <>
+                    <Send className="size-4" aria-hidden="true" />
+                    Approve &amp; send email
+                  </>
+                }
                 pendingText="Sending..."
-              />
+                formClassName="flex flex-wrap items-center gap-2"
+                buttonProps={{ size: "lg" }}
+              >
+                {contactSelect}
+              </AiActionForm>
             ) : null}
             {(message.status === "approved" || message.status === "failed") &&
             hasContactEmail ? (
               <AiActionForm
                 action={sendMessageAction.bind(null, businessId, productId, prospectId, message.id)}
-                buttonLabel={message.status === "failed" ? "Retry send" : "Send"}
+                buttonLabel={
+                  <>
+                    <Send className="size-4" aria-hidden="true" />
+                    {message.status === "failed" ? "Retry send" : "Send email"}
+                  </>
+                }
                 pendingText="Sending..."
-              />
+                formClassName="flex flex-wrap items-center gap-2"
+                buttonProps={{ size: "lg" }}
+              >
+                {contactSelect}
+              </AiActionForm>
             ) : null}
             {message.status === "failed" && message.failure_reason ? (
               <p role="alert" className="text-xs text-destructive">
@@ -270,7 +320,6 @@ export default async function ProspectDetailPage({
   const score = scores[0] ?? null;
   const previousScore = scores[1] ?? null;
   const drafts = messages.filter((m) => !m.conversation_id);
-  const hasContactEmail = contacts.some((c) => c.email);
   const threadForConversation = (conversationId: string) =>
     messages
       .filter((m) => m.conversation_id === conversationId)
@@ -662,7 +711,7 @@ export default async function ProspectDetailPage({
                   businessId={businessId}
                   productId={productId}
                   prospectId={prospect.id}
-                  hasContactEmail={hasContactEmail}
+                  contacts={contacts}
                 />
               ))}
             </ul>
@@ -691,12 +740,18 @@ export default async function ProspectDetailPage({
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-xs font-medium",
-                          c.status === "replied"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground",
+                          c.status === "closed" && prospect.outcome === "won"
+                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                            : c.status === "closed" && prospect.outcome === "lost"
+                              ? "bg-muted text-muted-foreground"
+                              : c.status === "replied"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground",
                         )}
                       >
-                        {CONVERSATION_STATUS_LABEL[c.status] ?? c.status}
+                        {c.status === "closed" && OUTCOME_LABEL[prospect.outcome]
+                          ? `Closed · ${OUTCOME_LABEL[prospect.outcome]}`
+                          : (CONVERSATION_STATUS_LABEL[c.status] ?? c.status)}
                       </span>
                       {c.status !== "closed" ? (
                         <form
@@ -707,9 +762,25 @@ export default async function ProspectDetailPage({
                             prospect.id,
                             c.id,
                           )}
+                          className="flex items-center gap-1.5"
                         >
-                          <SubmitButton size="sm" variant="ghost" pendingText="Closing...">
-                            Close
+                          <SubmitButton
+                            name="outcome"
+                            value="won"
+                            size="sm"
+                            variant="outline"
+                            pendingText="Closing..."
+                          >
+                            Won
+                          </SubmitButton>
+                          <SubmitButton
+                            name="outcome"
+                            value="lost"
+                            size="sm"
+                            variant="ghost"
+                            pendingText="Closing..."
+                          >
+                            Lost
                           </SubmitButton>
                         </form>
                       ) : null}
@@ -748,7 +819,7 @@ export default async function ProspectDetailPage({
                             businessId={businessId}
                             productId={productId}
                             prospectId={prospect.id}
-                            hasContactEmail={hasContactEmail}
+                            contacts={contacts}
                             className="ml-auto max-w-xl bg-background"
                           />
                         ),
@@ -800,38 +871,12 @@ export default async function ProspectDetailPage({
         ) : (
           <ul className="flex flex-col gap-2">
             {contacts.map((c) => (
-              <li
+              <ContactRow
                 key={c.id}
-                className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm"
-              >
-                <div>
-                  <p className="font-medium">
-                    {[c.first_name, c.last_name].filter(Boolean).join(" ") || "(no name)"}
-                    {c.job_title ? (
-                      <span className="ml-2 font-normal text-muted-foreground">
-                        {c.job_title}
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {[c.email, c.phone, c.linkedin_url].filter(Boolean).join(" · ") ||
-                      "No contact details"}
-                  </p>
-                </div>
-                <form
-                  action={deleteContactAction.bind(
-                    null,
-                    businessId,
-                    productId,
-                    prospect.id,
-                    c.id,
-                  )}
-                >
-                  <SubmitButton variant="ghost" size="sm" pendingText="Deleting...">
-                    Delete
-                  </SubmitButton>
-                </form>
-              </li>
+                contact={c}
+                updateAction={updateContactAction.bind(null, businessId, productId, prospect.id, c.id)}
+                deleteAction={deleteContactAction.bind(null, businessId, productId, prospect.id, c.id)}
+              />
             ))}
           </ul>
         )}
