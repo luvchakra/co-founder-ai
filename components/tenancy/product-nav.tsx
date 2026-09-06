@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NOTCH = 12;
@@ -27,12 +26,13 @@ export function ProductNav({
   completed,
 }: {
   basePath: string;
-  /** Real workflow progress (profile generated, ICP exists, prospects added) -- shown as
-   * a checkmark on any non-current stage that's already been reached, distinct from
-   * "isActive" (which tab you're currently viewing). Conversions has no completion
-   * concept, so it's omitted here and stays neutral unless it's the current tab. Usage
-   * lives next to the product name (see the product layout), not as a tab here -- as a
-   * fifth tab it stretched this strip too wide. */
+  /** Real workflow progress (profile generated, ICP exists, prospects added) -- reached
+   * stages get a tinted-primary fill instead of the neutral muted one, so progress reads
+   * from color alone (muted -> tinted -> solid primary for the current stage) with no
+   * separate checkmark icon. Conversions has no completion concept, so it's omitted here
+   * and stays neutral unless it's the current tab. Usage lives next to the product name
+   * (see the product layout), not as a tab here -- as a fifth tab it stretched this strip
+   * too wide. */
   completed?: Partial<Record<StageId, boolean>>;
 }) {
   const pathname = usePathname();
@@ -66,11 +66,10 @@ export function ProductNav({
               isActive
                 ? "bg-primary text-primary-foreground"
                 : isCompleted
-                  ? "bg-accent text-foreground hover:bg-accent/70"
+                  ? "bg-primary/20 text-primary hover:bg-primary/30"
                   : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {isCompleted ? <Check className="size-3.5" aria-hidden="true" /> : null}
             {tab.label}
           </Link>
         );
