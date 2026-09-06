@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Sparkles, Upload } from "lucide-react";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspects, listProspectIndustries } from "@/lib/prospects/queries";
 import type { ProspectStatus } from "@/lib/prospects/types";
-import { PROSPECT_STAGES, PROSPECT_STAGE_LABEL, type ProspectStage } from "@/lib/prospects/pipeline";
+import type { ProspectStage } from "@/lib/prospects/pipeline";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { ProspectFilters } from "@/components/prospects/prospect-filters";
+import { ProspectsTable } from "@/components/prospects/prospects-table";
 import { createProspectAction, bulkResearchAction, bulkScoreAction } from "./actions";
-
-const STATUS_OPTIONS: ProspectStatus[] = ["new", "qualified", "disqualified"];
 
 export default async function ProspectsPage({
   params,
@@ -72,9 +73,29 @@ export default async function ProspectsPage({
   ]);
 
   const basePath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
+  const hasActiveFilters = Boolean(status || industry || search || stage || sort);
+  const hasAdvancedFilters = Boolean(status || stage || industry || sort);
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">Prospects</h1>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href={`${basePath}/import`}>
+              <Upload className="size-4" aria-hidden="true" />
+              Import CSV
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link href={`${basePath}/discover`}>
+              <Sparkles className="size-4" aria-hidden="true" />
+              Discover
+            </Link>
+          </Button>
+        </div>
+      </div>
+
       {imported ? (
         <p className="rounded-md border bg-muted p-3 text-sm">
           Imported {imported} prospect{imported === "1" ? "" : "s"}.
@@ -96,158 +117,33 @@ export default async function ProspectsPage({
             : ""}
         </p>
       ) : null}
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="search">Search</Label>
-          <Input
-            id="search"
-            name="search"
-            defaultValue={search ?? ""}
-            placeholder="Company name"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="status">Status</Label>
-          <Select id="status" name="status" defaultValue={status ?? ""}>
-            <option value="">Any</option>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="stage">Stage</Label>
-          <Select id="stage" name="stage" defaultValue={stage ?? ""}>
-            <option value="">Any</option>
-            {PROSPECT_STAGES.map((s) => (
-              <option key={s} value={s}>
-                {PROSPECT_STAGE_LABEL[s]}
-              </option>
-            ))}
-          </Select>
-        </div>
-        {industries.length > 0 ? (
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="industry">Industry</Label>
-            <Select id="industry" name="industry" defaultValue={industry ?? ""}>
-              <option value="">Any</option>
-              {industries.map((i) => (
-                <option key={i} value={i}>
-                  {i}
-                </option>
-              ))}
-            </Select>
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="sort">Sort</Label>
-          <Select id="sort" name="sort" defaultValue={sortMode}>
-            <option value="recent">Most recent</option>
-            <option value="stage">Pipeline stage</option>
-            <option value="priority">Priority (highest fit, needs action)</option>
-          </Select>
-        </div>
-        <Button type="submit" size="sm" variant="outline">
-          Filter
-        </Button>
-        {status || industry || search || stage || sort ? (
-          <Button asChild size="sm" variant="ghost">
-            <Link href={basePath}>Clear</Link>
-          </Button>
-        ) : null}
-      </form>
 
-      <form action={bulkResearchAction.bind(null, businessId, productId, workspace.id)}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="py-2 pr-4 font-medium" />
-                <th className="py-2 pr-4 font-medium">Company</th>
-                <th className="py-2 pr-4 font-medium">Industry</th>
-                <th className="py-2 pr-4 font-medium">Size</th>
-                <th className="py-2 pr-4 font-medium">Location</th>
-                <th className="py-2 pr-4 font-medium">Status</th>
-                <th className="py-2 pr-4 font-medium">Fit score</th>
-                <th className="py-2 pr-4 font-medium">Stage</th>
-                <th className="py-2 pr-4 font-medium">Next action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {prospects.map((p) => (
-                <tr key={p.id} className="border-b last:border-0">
-                  <td className="py-2 pr-2">
-                    <input type="checkbox" name="ids" value={p.id} className="size-4" />
-                  </td>
-                  <td className="py-2 pr-4">
-                    <Link href={`${basePath}/${p.id}`} className="font-medium hover:underline">
-                      {p.company_name}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4 text-muted-foreground">{p.industry ?? "—"}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{p.company_size ?? "—"}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{p.location ?? "—"}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{p.status}</td>
-                  <td className="py-2 pr-4 text-muted-foreground">{p.fit_score ?? "—"}</td>
-                  <td className="py-2 pr-4">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                      {PROSPECT_STAGE_LABEL[p.stage]}
-                    </span>
-                    {p.isStuck ? (
-                      <span
-                        title={`No activity since ${new Date(p.lastActivityAt).toLocaleDateString()}`}
-                        className="ml-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400"
-                      >
-                        Needs next step
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="py-2 pr-4">
-                    {p.nextAction ? (
-                      <Link
-                        href={`${basePath}/${p.id}`}
-                        className="text-sm underline underline-offset-4"
-                      >
-                        {p.nextAction}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {prospects.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">
-              No prospects match these filters.
-            </p>
-          ) : (
-            <div className="flex items-center gap-2 pt-3">
-              <SubmitButton size="sm" variant="outline" pendingText="Researching...">
-                Research selected
-              </SubmitButton>
-              <SubmitButton
-                size="sm"
-                variant="outline"
-                pendingText="Scoring..."
-                formAction={bulkScoreAction.bind(null, businessId, productId, workspace.id)}
-              >
-                Score selected
-              </SubmitButton>
-              <p className="text-xs text-muted-foreground">
-                Only checked prospects already at the matching stage (new for research,
-                researched for score) are affected -- the rest are skipped.
-              </p>
-            </div>
-          )}
-        </div>
-      </form>
+      <ProspectFilters
+        basePath={basePath}
+        search={search ?? ""}
+        status={status ?? ""}
+        stage={stage ?? ""}
+        industry={industry ?? ""}
+        sort={sort ?? "recent"}
+        industries={industries}
+        defaultAdvancedOpen={hasAdvancedFilters}
+        hasActiveFilters={hasActiveFilters}
+      />
 
-      <div className="flex flex-col gap-3 rounded-md border p-4">
-        <h2 className="text-sm font-medium">Add a prospect</h2>
+      {prospects.length === 0 ? (
+        <p className="rounded-md border p-4 text-sm text-muted-foreground">
+          {hasActiveFilters ? "No prospects match these filters." : "No prospects yet."}
+        </p>
+      ) : (
+        <ProspectsTable
+          prospects={prospects}
+          basePath={basePath}
+          bulkResearchAction={bulkResearchAction.bind(null, businessId, productId, workspace.id)}
+          bulkScoreAction={bulkScoreAction.bind(null, businessId, productId, workspace.id)}
+        />
+      )}
+
+      <CollapsibleCard label="Add a prospect">
         <form
           action={createProspectAction.bind(null, businessId, productId, workspace.id)}
           className="grid grid-cols-1 gap-3 sm:grid-cols-2"
@@ -280,16 +176,7 @@ export default async function ProspectsPage({
             Add prospect
           </SubmitButton>
         </form>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <Link href={`${basePath}/import`} className="text-sm underline underline-offset-4">
-          Import prospects from CSV
-        </Link>
-        <Link href={`${basePath}/discover`} className="text-sm underline underline-offset-4">
-          Discover prospects automatically
-        </Link>
-      </div>
+      </CollapsibleCard>
     </div>
   );
 }

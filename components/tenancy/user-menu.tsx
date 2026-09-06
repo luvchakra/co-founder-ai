@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import { useDismiss } from "@/hooks/use-dismiss";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -18,12 +18,10 @@ function getInitials(name: string | null, email: string): string {
 
 /**
  * Top-right avatar + account dropdown (CoFounderAI Header & Business Selector Enhancement
- * doc §1). "Profile" and "Help" are omitted -- neither a profile-management page nor a
- * help center exists in this app yet, and the doc itself makes Profile conditional ("if
- * profile management exists") and Help explicitly optional; shipping either as a link to
- * nowhere would just be the dead-CTA problem the earlier landing-page pass fixed.
- * Settings links to the one settings screen that exists today (AI Provider), replacing
- * the standalone header link that used to sit next to it.
+ * doc §1). "Help" is omitted -- no help center exists in this app yet, and the doc makes
+ * it explicitly optional; shipping a link to nowhere would just be the dead-CTA problem
+ * the earlier landing-page pass fixed. Settings links to the one settings screen that
+ * exists today (AI Provider).
  */
 export function UserMenu({
   name,
@@ -73,6 +71,16 @@ export function UserMenu({
           </div>
 
           <div className="my-1 border-t" />
+
+          <Link
+            href="/dashboard/settings/profile"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
+          >
+            <User className="size-4 text-muted-foreground" aria-hidden="true" />
+            Profile
+          </Link>
 
           <Link
             href="/dashboard/settings/ai-provider"
