@@ -1,15 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  getCurrentAccount,
-  getWorkspaceForProduct,
-  listBusinesses,
-  listProducts,
-} from "@/lib/tenancy/queries";
-import type { Business, Product, Workspace } from "@/lib/tenancy/types";
-import { getProspectCounts, listProspects } from "@/lib/prospects/queries";
+import { getCurrentAccount } from "@/lib/tenancy/queries";
+import { getAccountUsageAndProspects, getAccountWorkspaceEntries } from "@/lib/dashboard/queries";
 import { computeConversionFunnel } from "@/lib/prospects/pipeline";
-import { getWorkspaceUsage } from "@/lib/usage/queries";
 import { creditsUsedPercent } from "@/lib/usage/format";
 import { FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
 import { ConversionFunnelPanel } from "@/components/prospects/conversion-funnel-panel";
@@ -37,8 +30,6 @@ function KpiCard({
   );
 }
 
-type WorkspaceEntry = { workspace: Workspace; product: Product; business: Business };
-
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -49,32 +40,17 @@ export default async function DashboardPage({
 
   const { business: businessFilter, product: productFilter } = await searchParams;
 
-  const businesses = await listBusinesses(account.id);
-  const productLists = await Promise.all(
-    businesses.map((business) => listProducts(business.id)),
+  // Both cache()-wrapped by accountId -- when the dashboard layout already ran these for
+  // this same request (it always does), this reuses that result instead of re-scanning
+  // the account.
+  const { businesses, allProducts, entries: workspaceEntries } = await getAccountWorkspaceEntries(
+    account.id,
   );
-  const allProducts = productLists.flat();
+  const { usageByWorkspace, countsByWorkspace, prospects } = await getAccountUsageAndProspects(
+    account.id,
+  );
 
-  const businessById = new Map(businesses.map((b) => [b.id, b]));
-  const workspaceEntries = (
-    await Promise.all(
-      allProducts.map(async (product): Promise<WorkspaceEntry | null> => {
-        const workspace = await getWorkspaceForProduct(product.id);
-        const business = businessById.get(product.business_id);
-        if (!workspace || !business) return null;
-        return { workspace, product, business };
-      }),
-    )
-  ).filter((entry): entry is WorkspaceEntry => entry !== null);
-
-  const workspaces = workspaceEntries.map((e) => e.workspace);
-
-  const [prospectCountsByWorkspace, usageByWorkspace] = await Promise.all([
-    Promise.all(workspaces.map((w) => getProspectCounts(w.id))),
-    Promise.all(workspaces.map((w) => getWorkspaceUsage(w.id))),
-  ]);
-
-  const prospects = prospectCountsByWorkspace.reduce(
+  const prospectCounts = Object.values(countsByWorkspace).reduce(
     (sum, c) => ({
       total: sum.total + c.total,
       new: sum.new + c.new,
@@ -83,23 +59,22 @@ export default async function DashboardPage({
     }),
     { total: 0, new: 0, qualified: 0, disqualified: 0 },
   );
-  const usage = usageByWorkspace.reduce(
+  const usage = Object.values(usageByWorkspace).reduce(
     (sum, u) => ({ runs: sum.runs + u.totalRuns, cost: sum.cost + u.totalCost }),
     { runs: 0, cost: 0 },
   );
 
   // Slice-and-dice: a product filter is the most specific slice, then business, then
-  // every workspace on the account. No new query shape -- just which workspaces'
-  // already-computed prospect lists get merged into one funnel.
+  // every workspace on the account. No query at all here -- just filtering the
+  // account's already-fetched prospect list by which workspaces are in the slice.
   const slicedEntries = productFilter
     ? workspaceEntries.filter((e) => e.product.id === productFilter)
     : businessFilter
       ? workspaceEntries.filter((e) => e.business.id === businessFilter)
       : workspaceEntries;
-  const slicedProspectLists = await Promise.all(
-    slicedEntries.map((e) => listProspects(e.workspace.id)),
-  );
-  const funnel = computeConversionFunnel(slicedProspectLists.flat());
+  const slicedWorkspaceIds = new Set(slicedEntries.map((e) => e.workspace.id));
+  const slicedProspects = prospects.filter((p) => slicedWorkspaceIds.has(p.workspace_id));
+  const funnel = computeConversionFunnel(slicedProspects);
 
   const productsForFilter = businessFilter
     ? workspaceEntries.filter((e) => e.business.id === businessFilter)
@@ -114,16 +89,16 @@ export default async function DashboardPage({
           <KpiCard label="Products" value={allProducts.length} />
           <KpiCard
             label="Prospects"
-            value={prospects.total}
+            value={prospectCounts.total}
             detail={
-              prospects.total > 0
-                ? `${prospects.qualified} qualified · ${prospects.new} new`
+              prospectCounts.total > 0
+                ? `${prospectCounts.qualified} qualified · ${prospectCounts.new} new`
                 : undefined
             }
           />
           <KpiCard
             label="AI credits (month)"
-            value={`${creditsUsedPercent(usage.cost, FREE_TIER_MONTHLY_COST_LIMIT_USD * Math.max(workspaces.length, 1))}%`}
+            value={`${creditsUsedPercent(usage.cost, FREE_TIER_MONTHLY_COST_LIMIT_USD * Math.max(workspaceEntries.length, 1))}%`}
             detail={`${usage.runs} run${usage.runs === 1 ? "" : "s"} used`}
           />
         </div>

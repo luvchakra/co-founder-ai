@@ -1,16 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getCurrentAccount,
-  getWorkspaceForProduct,
-  listBusinesses,
-  listProducts,
-} from "@/lib/tenancy/queries";
-import type { Product, Workspace } from "@/lib/tenancy/types";
-import { getWorkspaceUsage } from "@/lib/usage/queries";
+import { getCurrentAccount } from "@/lib/tenancy/queries";
+import { getAccountUsageAndProspects, getAccountWorkspaceEntries } from "@/lib/dashboard/queries";
 import { creditsUsedPercent } from "@/lib/usage/format";
 import { FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
+import { deriveAccountAlerts } from "@/lib/alerts/derive";
 import { signOut } from "@/app/(auth)/actions";
 import { createBusinessAction } from "@/app/(dashboard)/dashboard/actions";
 import { Sidebar } from "@/components/tenancy/sidebar";
@@ -18,6 +13,7 @@ import { SidebarProvider } from "@/components/tenancy/sidebar-context";
 import { SidebarToggle } from "@/components/tenancy/sidebar-toggle";
 import { BusinessSelector } from "@/components/tenancy/business-selector";
 import { AiChatWidget } from "@/components/chat/ai-chat-widget";
+import { AlertBell } from "@/components/alerts/alert-bell";
 import { LogoMark } from "@/components/ui/logo-mark";
 
 export default async function DashboardLayout({
@@ -32,26 +28,22 @@ export default async function DashboardLayout({
   if (!user) redirect("/login");
 
   const account = await getCurrentAccount();
-  const businesses = account ? await listBusinesses(account.id) : [];
-  const productLists = await Promise.all(
-    businesses.map((business) => listProducts(business.id)),
-  );
-  const productsByBusiness: Record<string, Product[]> = {};
-  businesses.forEach((business, i) => {
-    productsByBusiness[business.id] = productLists[i];
-  });
+  // getAccountWorkspaceEntries/getAccountUsageAndProspects are React cache()-wrapped by
+  // accountId, so when the /dashboard page below also calls them in the same request,
+  // it reuses this exact result instead of re-running its own full account scan.
+  const { businesses, productsByBusiness, entries } = account
+    ? await getAccountWorkspaceEntries(account.id)
+    : { businesses: [], productsByBusiness: {}, entries: [] };
+  const { usageByWorkspace, prospects } = account
+    ? await getAccountUsageAndProspects(account.id)
+    : { usageByWorkspace: {}, prospects: [] };
 
-  const allProducts = productLists.flat();
-  const workspaces = (
-    await Promise.all(allProducts.map((product) => getWorkspaceForProduct(product.id)))
-  ).filter((w): w is Workspace => w !== null);
-  const totalCost = (
-    await Promise.all(workspaces.map((w) => getWorkspaceUsage(w.id)))
-  ).reduce((sum, u) => sum + u.totalCost, 0);
+  const totalCost = Object.values(usageByWorkspace).reduce((sum, u) => sum + u.totalCost, 0);
   const creditsPercent = creditsUsedPercent(
     totalCost,
-    FREE_TIER_MONTHLY_COST_LIMIT_USD * Math.max(workspaces.length, 1),
+    FREE_TIER_MONTHLY_COST_LIMIT_USD * Math.max(entries.length, 1),
   );
+  const alerts = deriveAccountAlerts({ entries, usageByWorkspace, prospects });
 
   const metadata = user.user_metadata ?? {};
   const displayName = (metadata.full_name || metadata.name || null) as string | null;
@@ -77,6 +69,7 @@ export default async function DashboardLayout({
               />
             ) : null}
           </div>
+          <AlertBell alerts={alerts} />
           <AiChatWidget />
         </header>
         <Sidebar

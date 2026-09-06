@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getBusiness, listProducts } from "@/lib/tenancy/queries";
+import { ChevronRight } from "lucide-react";
+import { getBusiness, getWorkspaceForProduct, listProducts } from "@/lib/tenancy/queries";
+import { getIcpProfile } from "@/lib/icp/queries";
+import { getProspectCounts } from "@/lib/prospects/queries";
 import { createProductAction } from "@/app/(dashboard)/dashboard/actions";
 import { renameBusinessAction, updateBusinessDescriptionAction } from "./actions";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -9,6 +12,42 @@ import { Label } from "@/components/ui/label";
 import { EditableName } from "@/components/tenancy/editable-name";
 import { EditableText } from "@/components/tenancy/editable-text";
 import { Breadcrumbs } from "@/components/tenancy/breadcrumbs";
+import { cn } from "@/lib/utils";
+import type { Product } from "@/lib/tenancy/types";
+
+type ProductCardData = {
+  product: Product;
+  hasProfile: boolean;
+  hasIcp: boolean;
+  prospectCount: number;
+};
+
+async function loadProductCardData(product: Product): Promise<ProductCardData> {
+  const workspace = await getWorkspaceForProduct(product.id);
+  const [icp, prospectCounts] = workspace
+    ? await Promise.all([getIcpProfile(workspace.id), getProspectCounts(workspace.id)])
+    : [null, null];
+
+  return {
+    product,
+    hasProfile: Boolean(product.product_profile),
+    hasIcp: Boolean(icp),
+    prospectCount: prospectCounts?.total ?? 0,
+  };
+}
+
+function StatusChip({ done, doneLabel, todoLabel }: { done: boolean; doneLabel: string; todoLabel: string }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-xs font-medium",
+        done ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground",
+      )}
+    >
+      {done ? doneLabel : todoLabel}
+    </span>
+  );
+}
 
 export default async function BusinessPage({
   params,
@@ -20,6 +59,7 @@ export default async function BusinessPage({
   if (!business) notFound();
 
   const products = await listProducts(business.id);
+  const cards = await Promise.all(products.map(loadProductCardData));
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">
@@ -45,19 +85,37 @@ export default async function BusinessPage({
 
       <section>
         <h2 className="font-medium">Products</h2>
-        {products.length === 0 ? (
+        {cards.length === 0 ? (
           <p className="mt-2 text-muted-foreground">
             Create a product to get its own GTM workspace.
           </p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-2">
-            {products.map((product) => (
+          <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {cards.map(({ product, hasProfile, hasIcp, prospectCount }) => (
               <li key={product.id}>
                 <Link
                   href={`/dashboard/businesses/${business.id}/products/${product.id}`}
-                  className="block rounded-md border p-3 hover:bg-accent"
+                  className="group flex h-full flex-col gap-3 rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent/40"
                 >
-                  {product.name}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-medium">{product.name}</h3>
+                    <ChevronRight
+                      className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  {product.description ? (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {product.description}
+                    </p>
+                  ) : null}
+                  <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+                    <StatusChip done={hasProfile} doneLabel="Profile ready" todoLabel="No profile" />
+                    <StatusChip done={hasIcp} doneLabel="ICP defined" todoLabel="No ICP" />
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                      {prospectCount} prospect{prospectCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
                 </Link>
               </li>
             ))}

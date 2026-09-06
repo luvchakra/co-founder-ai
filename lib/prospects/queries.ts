@@ -126,6 +126,27 @@ export async function listProspects(
   return prospects;
 }
 
+/**
+ * Same shape as listProspects, batched across every workspace at once -- used by the
+ * dashboard's account-wide conversion funnel, which otherwise queried once per workspace
+ * only to concatenate the results anyway. No filters/sort: the dashboard only ever needs
+ * the full unfiltered set to compute funnel counts from.
+ */
+export async function listProspectsForWorkspaces(
+  workspaceIds: string[],
+): Promise<ProspectWithPipeline[]> {
+  if (workspaceIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospects")
+    .select(PIPELINE_SELECT)
+    .in("workspace_id", workspaceIds);
+  if (error) throw error;
+
+  return (data as unknown as ProspectPipelineRow[]).map(deriveRow);
+}
+
 export async function getProspect(prospectId: string): Promise<Prospect | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -169,6 +190,39 @@ export async function getProspectCounts(workspaceId: string): Promise<ProspectCo
   const counts: ProspectCounts = { total: data.length, new: 0, qualified: 0, disqualified: 0 };
   for (const row of data as { status: ProspectStatus }[]) counts[row.status] += 1;
   return counts;
+}
+
+/**
+ * Same counts as getProspectCounts, batched across every workspace at once -- one round
+ * trip instead of one per workspace. The dashboard (aggregating across every business/
+ * product on the account) is the reason this exists; RLS still filters every row exactly
+ * as it would per-workspace, so batching the query changes nothing about who can see
+ * what, only how many round trips it costs.
+ */
+export async function getProspectCountsForWorkspaces(
+  workspaceIds: string[],
+): Promise<Record<string, ProspectCounts>> {
+  const result: Record<string, ProspectCounts> = {};
+  if (workspaceIds.length === 0) return result;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospects")
+    .select("workspace_id, status")
+    .in("workspace_id", workspaceIds);
+  if (error) throw error;
+
+  for (const row of data as { workspace_id: string; status: ProspectStatus }[]) {
+    const counts = (result[row.workspace_id] ??= {
+      total: 0,
+      new: 0,
+      qualified: 0,
+      disqualified: 0,
+    });
+    counts.total += 1;
+    counts[row.status] += 1;
+  }
+  return result;
 }
 
 export async function listProspectSuggestions(

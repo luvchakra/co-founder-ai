@@ -104,6 +104,20 @@ export const getWorkspaceForProduct = cache(async (
   return data;
 });
 
+/** Batched getWorkspaceForProduct -- one query for every product's workspace instead of
+ * one query per product. The dashboard (resolving every product on the account to its
+ * workspace) is the reason this exists. */
+export async function listWorkspacesForProducts(productIds: string[]): Promise<Workspace[]> {
+  if (productIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workspaces")
+    .select("*")
+    .in("product_id", productIds);
+  if (error) throw error;
+  return data;
+}
+
 export const getWorkspace = cache(async (
   workspaceId: string,
   client?: SupabaseClient,
