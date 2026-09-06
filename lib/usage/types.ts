@@ -13,9 +13,3 @@ export type WorkspaceUsage = {
   byOperation: OperationUsage[];
 };
 
-export type OperationCostSample = {
-  average: number;
-  min: number;
-  max: number;
-  sampleSize: number;
-};

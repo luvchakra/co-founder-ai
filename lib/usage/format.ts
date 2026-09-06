@@ -1,19 +1,10 @@
-import type { OperationCostSample } from "./types";
+import { FREE_TIER_MONTHLY_COST_LIMIT_USD } from "./limits";
 
-const currencyFormat = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-/** Pre-action cost hint text for an expensive operation's trigger button. Never a
- * hardcoded dollar figure -- with no run history yet, says so instead of guessing. */
-export function formatCostHint(sample: OperationCostSample | null): string {
-  if (!sample) return "Searches the live web -- cost shown here after your first run.";
-  const range =
-    sample.min === sample.max
-      ? currencyFormat.format(sample.min)
-      : `${currencyFormat.format(sample.min)}–${currencyFormat.format(sample.max)}`;
-  return `Typically ${range} -- searches the live web.`;
+/** Founder-facing usage is expressed as "% of AI credits used," never a raw dollar
+ * figure -- the underlying free-tier cap is still tracked in USD (limits.ts), this is
+ * just the display framing. Clamped to 100 since spend can exceed the cap briefly before
+ * assertWithinUsageLimit blocks further runs. */
+export function creditsUsedPercent(totalCost: number, limitUsd = FREE_TIER_MONTHLY_COST_LIMIT_USD): number {
+  if (limitUsd <= 0) return 0;
+  return Math.min(100, Math.round((totalCost / limitUsd) * 100));
 }

@@ -1,6 +1,7 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import type { OperationCostSample, WorkspaceUsage } from "./types";
+import type { WorkspaceUsage } from "./types";
 
 function currentMonthRange(): { start: string; end: string } {
   const now = new Date();
@@ -18,7 +19,7 @@ function currentMonthRange(): { start: string; end: string } {
  * with no logged-in user, e.g. classifyReply's usage check, which runs from the inbound
  * webhook.
  */
-export async function getWorkspaceUsage(
+export const getWorkspaceUsage = cache(async function getWorkspaceUsage(
   workspaceId: string,
   client?: SupabaseClient,
 ): Promise<WorkspaceUsage> {
@@ -54,38 +55,4 @@ export async function getWorkspaceUsage(
     totalCost: byOperation.reduce((sum, o) => sum + o.cost, 0),
     byOperation,
   };
-}
-
-/**
- * Rolling average cost for one operation, from its last `sampleSize` succeeded runs
- * (across all time, not just this month) -- backs the pre-action cost hints on
- * Discover/Research (ai-usage-cost-requirements R4). Null when there's no history yet,
- * so the UI never has to fall back to a hardcoded number.
- */
-export async function getRecentOperationCost(
-  workspaceId: string,
-  operation: string,
-  sampleSize = 10,
-  client?: SupabaseClient,
-): Promise<OperationCostSample | null> {
-  const supabase = client ?? (await createClient());
-  const { data, error } = await supabase
-    .from("ai_runs")
-    .select("estimated_cost")
-    .eq("workspace_id", workspaceId)
-    .eq("operation", operation)
-    .eq("status", "succeeded")
-    .not("estimated_cost", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(sampleSize);
-  if (error) throw error;
-  if (!data || data.length === 0) return null;
-
-  const costs = data.map((row) => row.estimated_cost as number);
-  return {
-    average: costs.reduce((sum, c) => sum + c, 0) / costs.length,
-    min: Math.min(...costs),
-    max: Math.max(...costs),
-    sampleSize: costs.length,
-  };
-}
+});

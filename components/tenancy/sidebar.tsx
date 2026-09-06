@@ -18,9 +18,12 @@ import type { Business, Product } from "@/lib/tenancy/types";
 export function Sidebar({
   businesses,
   productsByBusiness,
+  creditsUsedPercent,
 }: {
   businesses: Business[];
   productsByBusiness: Record<string, Product[]>;
+  /** % of AI credits used this month, blended across every workspace on the account. */
+  creditsUsedPercent: number;
 }) {
   const { open, setOpen } = useSidebar();
   const pathname = usePathname();
@@ -156,12 +159,32 @@ export function Sidebar({
           })}
         </div>
 
-        <div className="mt-auto flex flex-col border-t py-1">
+        <div className="mt-auto flex flex-col border-t">
+          <Link
+            href="/dashboard/settings/usage"
+            onClick={() => setOpen(false)}
+            className="flex flex-col gap-1.5 px-3 py-2.5 hover:bg-accent"
+          >
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>AI credits used</span>
+              <span className="font-medium text-foreground">{creditsUsedPercent}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width]",
+                  creditsUsedPercent >= 100 ? "bg-destructive" : "bg-primary",
+                )}
+                style={{ width: `${creditsUsedPercent}%` }}
+              />
+            </div>
+          </Link>
+
           <Link
             href="/dashboard/settings/ai-provider"
             onClick={() => setOpen(false)}
             className={cn(
-              "flex items-center gap-2.5 px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-foreground",
+              "flex items-center gap-2.5 border-t px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-foreground",
               pathname === "/dashboard/settings/ai-provider" && "bg-accent font-medium text-foreground",
             )}
           >
