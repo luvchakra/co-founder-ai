@@ -8,10 +8,13 @@ export default async function DashboardPage() {
   if (!account) redirect("/login");
 
   const businesses = await listBusinesses(account.id);
+  const productLists = await Promise.all(
+    businesses.map((business) => listProducts(business.id)),
+  );
   const productsByBusiness: Record<string, Product[]> = {};
-  for (const business of businesses) {
-    productsByBusiness[business.id] = await listProducts(business.id);
-  }
+  businesses.forEach((business, i) => {
+    productsByBusiness[business.id] = productLists[i];
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-8 p-8">

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { Account, Business, Product, Workspace } from "./types";
@@ -9,19 +10,25 @@ import type { Account, Business, Product, Workspace } from "./types";
  * what a caller can see, not this code. A query for an id the caller doesn't own returns
  * zero rows, never another tenant's data and never a distinguishable error -- that's what
  * "never rely on frontend filtering" means in practice here.
+ *
+ * Every function is wrapped in React's `cache()`: the dashboard layout and the page
+ * rendered inside it (and nested product layouts/pages below that) independently call
+ * several of these with the same arguments on every navigation. Without memoization each
+ * of those re-runs its own Supabase round trip; `cache()` dedupes identical calls to one
+ * DB query per request, matching Next.js's own request-memoization model for `fetch()`.
  */
 
-export async function requireUser() {
+export const requireUser = cache(async () => {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated.");
   return user;
-}
+});
 
 /** MVP assumes one account per user (see blueprint §9); returns the first membership. */
-export async function getCurrentAccount(): Promise<Account | null> {
+export const getCurrentAccount = cache(async (): Promise<Account | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("accounts")
@@ -31,9 +38,9 @@ export async function getCurrentAccount(): Promise<Account | null> {
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
 
-export async function listBusinesses(accountId: string): Promise<Business[]> {
+export const listBusinesses = cache(async (accountId: string): Promise<Business[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("businesses")
@@ -42,12 +49,12 @@ export async function listBusinesses(accountId: string): Promise<Business[]> {
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data;
-}
+});
 
-export async function getBusiness(
+export const getBusiness = cache(async (
   businessId: string,
   client?: SupabaseClient,
-): Promise<Business | null> {
+): Promise<Business | null> => {
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("businesses")
@@ -56,9 +63,9 @@ export async function getBusiness(
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
 
-export async function listProducts(businessId: string): Promise<Product[]> {
+export const listProducts = cache(async (businessId: string): Promise<Product[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
@@ -67,12 +74,12 @@ export async function listProducts(businessId: string): Promise<Product[]> {
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data;
-}
+});
 
-export async function getProduct(
+export const getProduct = cache(async (
   productId: string,
   client?: SupabaseClient,
-): Promise<Product | null> {
+): Promise<Product | null> => {
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("products")
@@ -81,10 +88,12 @@ export async function getProduct(
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
 
 /** Every product has exactly one workspace in the MVP (auto-created by the DB trigger). */
-export async function getWorkspaceForProduct(productId: string): Promise<Workspace | null> {
+export const getWorkspaceForProduct = cache(async (
+  productId: string,
+): Promise<Workspace | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("workspaces")
@@ -93,12 +102,12 @@ export async function getWorkspaceForProduct(productId: string): Promise<Workspa
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
 
-export async function getWorkspace(
+export const getWorkspace = cache(async (
   workspaceId: string,
   client?: SupabaseClient,
-): Promise<Workspace | null> {
+): Promise<Workspace | null> => {
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("workspaces")
@@ -107,7 +116,7 @@ export async function getWorkspace(
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
 
 /**
  * workspace -> product -> business -> account_id. Three sequential queries rather than a
