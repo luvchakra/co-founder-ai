@@ -37,7 +37,11 @@ export default async function ProductLayout({
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-8">
+    // max-w-6xl (not the old max-w-2xl): the prospects table and prospect detail page's
+    // conversation threads under this layout need real width to read comfortably --
+    // 2xl (672px) made every row/thread cramped. Wider also just gives the shorter
+    // ICP/conversions/usage pages more breathing room, not a regression for them.
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-8">
       <Breadcrumbs
         items={[
           { label: "Dashboard", href: "/dashboard" },

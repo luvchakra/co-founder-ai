@@ -722,7 +722,7 @@ export default async function ProspectDetailPage({
                         m.direction === "inbound" ? (
                           <li
                             key={m.id}
-                            className="mr-auto flex max-w-[85%] flex-col gap-1 rounded-md bg-muted p-3 text-sm"
+                            className="mr-auto flex max-w-xl flex-col gap-1 rounded-md bg-muted p-3 text-sm"
                           >
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-xs font-medium uppercase text-muted-foreground">
@@ -749,7 +749,7 @@ export default async function ProspectDetailPage({
                             productId={productId}
                             prospectId={prospect.id}
                             hasContactEmail={hasContactEmail}
-                            className="ml-auto max-w-[85%] bg-background"
+                            className="ml-auto max-w-xl bg-background"
                           />
                         ),
                       )}

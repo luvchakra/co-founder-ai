@@ -34,11 +34,27 @@ export function AiChatWidget() {
   const [followUp, setFollowUp] = useState<string | null>(null);
   const [starterQuestions, setStarterQuestions] = useState<string[]>([]);
   const [loadedThreadKey, setLoadedThreadKey] = useState<string | null>(null);
+  const [renderedThreadKey, setRenderedThreadKey] = useState(threadKey);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useDismiss(panelRef, open, () => setOpen(false));
+
+  // Clears the previous thread's content the instant the header's business/product
+  // selection changes -- during render, not in an effect, so the panel can never paint a
+  // frame showing one business/product's conversation while the header says another is
+  // selected. This is React's documented "adjust state while rendering" pattern for
+  // resetting state on a prop-like change (here, the URL-derived threadKey), distinct
+  // from loadedThreadKey below, which the effect uses to know whether it still needs to
+  // fetch this thread's data -- render-time clearing must never mark it as fetched.
+  if (threadKey !== renderedThreadKey) {
+    setRenderedThreadKey(threadKey);
+    setMessages([]);
+    setFollowUp(null);
+    setStarterQuestions([]);
+    setError(null);
+  }
 
   useEffect(() => {
     if (!open || loadedThreadKey === threadKey) return;
@@ -47,14 +63,10 @@ export function AiChatWidget() {
       ([history, questions]) => {
         if (cancelled) return;
         setLoadedThreadKey(threadKey);
-        setError(null);
         if (history.messages.length > 0) {
           setMessages(history.messages);
           setFollowUp(history.followUp);
-          setStarterQuestions([]);
         } else {
-          setMessages([]);
-          setFollowUp(null);
           setStarterQuestions(questions);
         }
       },
@@ -67,6 +79,8 @@ export function AiChatWidget() {
     // not on every pathname change within the same product.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, threadKey]);
+
+  const loadingThread = open && loadedThreadKey !== threadKey;
 
   async function send(text: string) {
     if (!text.trim() || pending) return;
@@ -163,7 +177,9 @@ export function AiChatWidget() {
             </div>
 
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-              {messages.length === 0 ? (
+              {loadingThread ? (
+                <p className="text-sm text-muted-foreground">Loading conversation...</p>
+              ) : messages.length === 0 ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">
                     Ask about GTM strategy, your ICP, prospects, or how to use
