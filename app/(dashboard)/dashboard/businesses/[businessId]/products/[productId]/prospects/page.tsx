@@ -1,17 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Sparkles, Upload } from "lucide-react";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspects, listProspectIndustries } from "@/lib/prospects/queries";
 import type { ProspectStatus } from "@/lib/prospects/types";
 import type { ProspectStage } from "@/lib/prospects/pipeline";
-import { Button } from "@/components/ui/button";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { CollapsibleCard } from "@/components/ui/collapsible-card";
-import { ProspectFilters } from "@/components/prospects/prospect-filters";
-import { ProspectsTable } from "@/components/prospects/prospects-table";
+import { ProspectToolbarActions } from "@/components/prospects/prospect-toolbar-actions";
+import { ProspectsBoard } from "@/components/prospects/prospects-board";
 import { createProspectAction, bulkResearchAction, bulkScoreAction } from "./actions";
 
 export default async function ProspectsPage({
@@ -58,13 +51,15 @@ export default async function ProspectsPage({
 
   const sortMode = sort === "stage" || sort === "priority" ? sort : "recent";
 
+  // `search` filters client-side (ProspectsBoard) against this already-fetched list, not
+  // the DB query -- the Advanced fields (status/stage/industry/sort) still need a fresh
+  // server-side fetch, since sort order and stage are computed server-side.
   const [prospects, industries] = await Promise.all([
     listProspects(
       workspace.id,
       {
         status: (status as ProspectStatus) || undefined,
         industry: industry || undefined,
-        search: search || undefined,
         stage: (stage as ProspectStage) || undefined,
       },
       sortMode,
@@ -80,20 +75,11 @@ export default async function ProspectsPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Prospects</h1>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`${basePath}/import`}>
-              <Upload className="size-4" aria-hidden="true" />
-              Import CSV
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`${basePath}/discover`}>
-              <Sparkles className="size-4" aria-hidden="true" />
-              Discover
-            </Link>
-          </Button>
-        </div>
+        <ProspectToolbarActions
+          importHref={`${basePath}/import`}
+          discoverHref={`${basePath}/discover`}
+          createAction={createProspectAction.bind(null, businessId, productId, workspace.id)}
+        />
       </div>
 
       {imported ? (
@@ -118,9 +104,10 @@ export default async function ProspectsPage({
         </p>
       ) : null}
 
-      <ProspectFilters
+      <ProspectsBoard
+        prospects={prospects}
         basePath={basePath}
-        search={search ?? ""}
+        initialSearch={search ?? ""}
         status={status ?? ""}
         stage={stage ?? ""}
         industry={industry ?? ""}
@@ -128,55 +115,9 @@ export default async function ProspectsPage({
         industries={industries}
         defaultAdvancedOpen={hasAdvancedFilters}
         hasActiveFilters={hasActiveFilters}
+        bulkResearchAction={bulkResearchAction.bind(null, businessId, productId, workspace.id)}
+        bulkScoreAction={bulkScoreAction.bind(null, businessId, productId, workspace.id)}
       />
-
-      {prospects.length === 0 ? (
-        <p className="rounded-md border p-4 text-sm text-muted-foreground">
-          {hasActiveFilters ? "No prospects match these filters." : "No prospects yet."}
-        </p>
-      ) : (
-        <ProspectsTable
-          prospects={prospects}
-          basePath={basePath}
-          bulkResearchAction={bulkResearchAction.bind(null, businessId, productId, workspace.id)}
-          bulkScoreAction={bulkScoreAction.bind(null, businessId, productId, workspace.id)}
-        />
-      )}
-
-      <CollapsibleCard label="Add a prospect">
-        <form
-          action={createProspectAction.bind(null, businessId, productId, workspace.id)}
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-        >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="companyName">Company name</Label>
-            <Input id="companyName" name="companyName" required />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="website">Website</Label>
-            <Input id="website" name="website" type="text" placeholder="https://" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="industry">Industry</Label>
-            <Input id="industry" name="industry" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="companySize">Company size</Label>
-            <Input id="companySize" name="companySize" placeholder="e.g. 50-200 employees" />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" name="location" />
-          </div>
-          <div className="flex flex-col gap-1.5 sm:col-span-2">
-            <Label htmlFor="description">Description</Label>
-            <Input id="description" name="description" />
-          </div>
-          <SubmitButton size="sm" className="self-start sm:col-span-2" pendingText="Adding...">
-            Add prospect
-          </SubmitButton>
-        </form>
-      </CollapsibleCard>
     </div>
   );
 }

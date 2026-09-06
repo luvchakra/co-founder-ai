@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getWorkspaceUsage } from "@/lib/usage/queries";
-import { FREE_TIER_MONTHLY_RUN_LIMIT, FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
+import { creditsUsedPercent } from "@/lib/usage/format";
+import { FREE_TIER_MONTHLY_RUN_LIMIT } from "@/lib/usage/limits";
 
 const OPERATION_LABEL: Record<string, string> = {
   understand_product: "Product profile",
@@ -13,13 +14,6 @@ const OPERATION_LABEL: Record<string, string> = {
   generate_reply: "Reply generation",
   classify_reply: "Reply classification",
 };
-
-const currencyFormat = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 4,
-});
 
 export default async function UsagePage({
   params,
@@ -34,10 +28,7 @@ export default async function UsagePage({
   if (!workspace) notFound();
 
   const usage = await getWorkspaceUsage(workspace.id);
-  const percentOfCostLimit = Math.min(
-    100,
-    Math.round((usage.totalCost / FREE_TIER_MONTHLY_COST_LIMIT_USD) * 100),
-  );
+  const percent = creditsUsedPercent(usage.totalCost);
   const periodLabel = new Date(usage.periodStart).toLocaleDateString(undefined, {
     month: "long",
     year: "numeric",
@@ -53,21 +44,15 @@ export default async function UsagePage({
 
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-sm">
-            <span>
-              {currencyFormat.format(usage.totalCost)} / {currencyFormat.format(FREE_TIER_MONTHLY_COST_LIMIT_USD)}
-            </span>
+            <span>{percent}% of AI credits used</span>
             <span className="text-muted-foreground">
               {usage.totalRuns} / {FREE_TIER_MONTHLY_RUN_LIMIT} runs
             </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${percentOfCostLimit}%` }}
-            />
+            <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
           </div>
-          {usage.totalCost >= FREE_TIER_MONTHLY_COST_LIMIT_USD ||
-          usage.totalRuns >= FREE_TIER_MONTHLY_RUN_LIMIT ? (
+          {percent >= 100 || usage.totalRuns >= FREE_TIER_MONTHLY_RUN_LIMIT ? (
             <p className="text-sm text-destructive">
               Free-tier limit reached for this month -- AI features are paused until next
               month.
@@ -89,7 +74,7 @@ export default async function UsagePage({
               >
                 <span>{OPERATION_LABEL[op.operation] ?? op.operation}</span>
                 <span className="text-muted-foreground">
-                  {op.runs} run{op.runs === 1 ? "" : "s"} · {currencyFormat.format(op.cost)}
+                  {op.runs} run{op.runs === 1 ? "" : "s"}
                 </span>
               </li>
             ))}

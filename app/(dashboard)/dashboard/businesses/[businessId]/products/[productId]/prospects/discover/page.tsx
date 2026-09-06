@@ -2,8 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProspectSuggestions } from "@/lib/prospects/queries";
-import { getRecentOperationCost } from "@/lib/usage/queries";
-import { formatCostHint } from "@/lib/usage/format";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { AiActionForm } from "@/components/ai/ai-action-form";
 import {
@@ -24,10 +22,7 @@ export default async function DiscoverProspectsPage({
   const workspace = await getWorkspaceForProduct(product.id);
   if (!workspace) notFound();
 
-  const [suggestions, costSample] = await Promise.all([
-    listProspectSuggestions(workspace.id),
-    getRecentOperationCost(workspace.id, "discover_prospects"),
-  ]);
+  const suggestions = await listProspectSuggestions(workspace.id);
   const prospectsPath = `/dashboard/businesses/${businessId}/products/${productId}/prospects`;
 
   return (
@@ -44,16 +39,12 @@ export default async function DiscoverProspectsPage({
             added to your pipeline until you review and approve it below.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <AiActionForm
-            action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}
-            buttonLabel="Find 10 new prospects"
-            pendingText="Searching the web..."
-            wrapperClassName="flex flex-col items-end gap-2"
-            buttonProps={{ size: "default" }}
-          />
-          <p className="text-xs text-muted-foreground">{formatCostHint(costSample)}</p>
-        </div>
+        <AiActionForm
+          action={runDiscoveryAction.bind(null, businessId, productId, workspace.id)}
+          buttonLabel="Find 10 new prospects"
+          pendingText="Searching the web..."
+          buttonProps={{ size: "default" }}
+        />
       </div>
 
       {suggestions.length === 0 ? (

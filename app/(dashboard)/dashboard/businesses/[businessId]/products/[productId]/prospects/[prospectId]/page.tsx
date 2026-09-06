@@ -8,8 +8,6 @@ import { listRecentProspectScores } from "@/lib/scoring/queries";
 import { WEIGHTS as SCORE_WEIGHTS } from "@/lib/scoring/score-prospect";
 import { getLatestOutreachStrategy } from "@/lib/outreach/queries";
 import { listMessages } from "@/lib/messages/queries";
-import { getRecentOperationCost } from "@/lib/usage/queries";
-import { formatCostHint } from "@/lib/usage/format";
 import { listConversations } from "@/lib/conversations/queries";
 import {
   deriveProspectPipelineState,
@@ -23,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ExpandableBox } from "@/components/ui/expandable-box";
+import { ChevronDown } from "lucide-react";
 import {
   updateProspectAction,
   updateProspectStatusAction,
@@ -74,6 +74,17 @@ const CLASSIFICATION_LABEL: Record<string, string> = {
   unsubscribe: "Unsubscribe",
   other: "Other",
 };
+
+/** Between two pipeline sections whose action gates the next (Research -> Score ->
+ * Strategy -> Messages, per lib/prospects/pipeline.ts's stage order) -- a visual cue that
+ * the section below can't start until the one above is done, not just decoration. */
+function DependencyArrow() {
+  return (
+    <div className="-my-4 flex justify-center">
+      <ChevronDown className="size-5 text-muted-foreground/40" aria-hidden="true" />
+    </div>
+  );
+}
 
 function OutboundMessageCard({
   message,
@@ -234,16 +245,14 @@ export default async function ProspectDetailPage({
   const prospect = await getProspect(prospectId);
   if (!prospect || prospect.workspace_id !== workspace.id) notFound();
 
-  const [contacts, research, scores, strategy, messages, conversations, researchCostSample] =
-    await Promise.all([
-      listContacts(prospect.id),
-      getProspectResearch(prospect.id),
-      listRecentProspectScores(prospect.id),
-      getLatestOutreachStrategy(prospect.id),
-      listMessages(prospect.id),
-      listConversations(prospect.id),
-      getRecentOperationCost(workspace.id, "research_prospect"),
-    ]);
+  const [contacts, research, scores, strategy, messages, conversations] = await Promise.all([
+    listContacts(prospect.id),
+    getProspectResearch(prospect.id),
+    listRecentProspectScores(prospect.id),
+    getLatestOutreachStrategy(prospect.id),
+    listMessages(prospect.id),
+    listConversations(prospect.id),
+  ]);
   const score = scores[0] ?? null;
   const previousScore = scores[1] ?? null;
   const drafts = messages.filter((m) => !m.conversation_id);
@@ -401,15 +410,11 @@ export default async function ProspectDetailPage({
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
           <h2 className="font-medium">Research</h2>
-          <div className="flex flex-col items-end gap-1">
-            <AiActionForm
-              action={researchProspectAction.bind(null, businessId, productId, prospect.id)}
-              buttonLabel={research ? "Re-research" : "Research"}
-              pendingText="Researching..."
-              wrapperClassName="flex flex-col items-end gap-2"
-            />
-            <p className="text-xs text-muted-foreground">{formatCostHint(researchCostSample)}</p>
-          </div>
+          <AiActionForm
+            action={researchProspectAction.bind(null, businessId, productId, prospect.id)}
+            buttonLabel={research ? "Re-research" : "Research"}
+            pendingText="Researching..."
+          />
         </div>
 
         {!research ? (
@@ -417,6 +422,7 @@ export default async function ProspectDetailPage({
             Not researched yet. Uses web search -- may take a moment.
           </p>
         ) : (
+          <ExpandableBox>
           <div className="flex flex-col gap-3 text-sm">
             <p>{research.summary}</p>
             {research.pain_points.length > 0 ? (
@@ -472,8 +478,11 @@ export default async function ProspectDetailPage({
               </div>
             ) : null}
           </div>
+          </ExpandableBox>
         )}
       </section>
+
+      <DependencyArrow />
 
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
@@ -522,6 +531,8 @@ export default async function ProspectDetailPage({
           </div>
         )}
       </section>
+
+      <DependencyArrow />
 
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">
@@ -592,6 +603,8 @@ export default async function ProspectDetailPage({
           </div>
         )}
       </section>
+
+      <DependencyArrow />
 
       <section className="flex flex-col gap-3 rounded-md border p-4">
         <div className="flex items-center justify-between">

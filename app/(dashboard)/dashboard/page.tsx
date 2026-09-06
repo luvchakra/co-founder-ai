@@ -8,15 +8,9 @@ import {
 import type { Product, Workspace } from "@/lib/tenancy/types";
 import { getProspectCounts } from "@/lib/prospects/queries";
 import { getWorkspaceUsage } from "@/lib/usage/queries";
+import { creditsUsedPercent } from "@/lib/usage/format";
 import { FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
 import { BusinessList } from "@/components/tenancy/business-list";
-
-const currencyFormat = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
 
 function KpiCard({
   label,
@@ -92,9 +86,9 @@ export default async function DashboardPage() {
             }
           />
           <KpiCard
-            label="AI spend (month)"
-            value={currencyFormat.format(usage.cost)}
-            detail={`${usage.runs} run${usage.runs === 1 ? "" : "s"} · of ${currencyFormat.format(FREE_TIER_MONTHLY_COST_LIMIT_USD)} free tier`}
+            label="AI credits (month)"
+            value={`${creditsUsedPercent(usage.cost, FREE_TIER_MONTHLY_COST_LIMIT_USD * Math.max(workspaces.length, 1))}%`}
+            detail={`${usage.runs} run${usage.runs === 1 ? "" : "s"} used`}
           />
         </div>
       </section>
