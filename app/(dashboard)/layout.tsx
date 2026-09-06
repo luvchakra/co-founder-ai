@@ -25,10 +25,13 @@ export default async function DashboardLayout({
 
   const account = await getCurrentAccount();
   const businesses = account ? await listBusinesses(account.id) : [];
+  const productLists = await Promise.all(
+    businesses.map((business) => listProducts(business.id)),
+  );
   const productsByBusiness: Record<string, Product[]> = {};
-  for (const business of businesses) {
-    productsByBusiness[business.id] = await listProducts(business.id);
-  }
+  businesses.forEach((business, i) => {
+    productsByBusiness[business.id] = productLists[i];
+  });
 
   const metadata = user.user_metadata ?? {};
   const displayName = (metadata.full_name || metadata.name || null) as string | null;
