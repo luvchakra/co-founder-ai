@@ -23,7 +23,9 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ExpandableBox } from "@/components/ui/expandable-box";
-import { ChevronDown } from "lucide-react";
+import { Briefcase, ChevronDown, Mail, MessageCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ConversationChannel } from "@/lib/conversations/types";
 import {
   updateProspectAction,
   updateProspectStatusAction,
@@ -42,6 +44,7 @@ import {
   deleteMessageAction,
   generateReplyAction,
   closeConversationAction,
+  logInboundReplyAction,
 } from "./actions";
 
 const CONFIDENCE_LABEL: Record<string, string> = {
@@ -64,6 +67,12 @@ const CONVERSATION_STATUS_LABEL: Record<string, string> = {
   awaiting_reply: "Awaiting reply",
   replied: "Needs response",
   closed: "Closed",
+};
+
+const CHANNEL_ICON: Record<ConversationChannel, typeof Mail> = {
+  email: Mail,
+  linkedin: Briefcase,
+  whatsapp: MessageCircle,
 };
 
 const CLASSIFICATION_LABEL: Record<string, string> = {
@@ -93,6 +102,7 @@ function OutboundMessageCard({
   productId,
   prospectId,
   hasContactEmail,
+  className,
 }: {
   message: Message;
   businessId: string;
@@ -102,11 +112,14 @@ function OutboundMessageCard({
    * the email channel (docs/prospects-pipeline-redesign-requirements.md R1: "no contact
    * email -> block Send with an inline prompt to add one"). */
   hasContactEmail: boolean;
+  /** Lets the conversation thread (unlike the flat drafts list) align this card like a
+   * chat bubble on its own side of the thread. */
+  className?: string;
 }) {
   const isEmail = message.channel === "email";
 
   return (
-    <li className="flex flex-col gap-2 rounded-md border p-3 text-sm">
+    <li className={cn("flex flex-col gap-2 rounded-md border p-3 text-sm", className)}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase text-muted-foreground">
           {message.channel} · {MESSAGE_STATUS_LABEL[message.status] ?? message.status}
@@ -504,36 +517,38 @@ export default async function ProspectDetailPage({
             Not scored yet. Requires an approved ICP.
           </p>
         ) : (
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-semibold">{score.overall_score}</p>
-              {previousScore && previousScore.overall_score !== score.overall_score ? (
-                <span
-                  className={
-                    score.overall_score > previousScore.overall_score
-                      ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
-                      : "text-xs font-medium text-amber-600 dark:text-amber-400"
-                  }
-                >
-                  {score.overall_score > previousScore.overall_score ? "▲" : "▼"}{" "}
-                  {Math.abs(score.overall_score - previousScore.overall_score)} since last score (
-                  {previousScore.overall_score})
-                </span>
-              ) : previousScore ? (
-                <span className="text-xs text-muted-foreground">No change since last score</span>
+          <ExpandableBox>
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-baseline gap-2">
+                <p className="text-2xl font-semibold">{score.overall_score}</p>
+                {previousScore && previousScore.overall_score !== score.overall_score ? (
+                  <span
+                    className={
+                      score.overall_score > previousScore.overall_score
+                        ? "text-xs font-medium text-emerald-600 dark:text-emerald-400"
+                        : "text-xs font-medium text-amber-600 dark:text-amber-400"
+                    }
+                  >
+                    {score.overall_score > previousScore.overall_score ? "▲" : "▼"}{" "}
+                    {Math.abs(score.overall_score - previousScore.overall_score)} since last score
+                    ({previousScore.overall_score})
+                  </span>
+                ) : previousScore ? (
+                  <span className="text-xs text-muted-foreground">No change since last score</span>
+                ) : null}
+              </div>
+              <p className="text-muted-foreground">
+                ICP fit {score.icp_score} ({SCORE_WEIGHTS.icp * 100}%) · Intent{" "}
+                {score.intent_score} ({SCORE_WEIGHTS.intent * 100}%) · Timing {score.timing_score} (
+                {SCORE_WEIGHTS.timing * 100}%)
+              </p>
+              {score.reasoning ? (
+                <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
+                  {score.reasoning}
+                </pre>
               ) : null}
             </div>
-            <p className="text-muted-foreground">
-              ICP fit {score.icp_score} ({SCORE_WEIGHTS.icp * 100}%) · Intent{" "}
-              {score.intent_score} ({SCORE_WEIGHTS.intent * 100}%) · Timing {score.timing_score} (
-              {SCORE_WEIGHTS.timing * 100}%)
-            </p>
-            {score.reasoning ? (
-              <pre className="whitespace-pre-wrap font-sans text-muted-foreground">
-                {score.reasoning}
-              </pre>
-            ) : null}
-          </div>
+          </ExpandableBox>
         )}
       </section>
 
@@ -573,23 +588,27 @@ export default async function ProspectDetailPage({
         ) : !strategy ? (
           <p className="text-sm text-muted-foreground">No strategy yet.</p>
         ) : (
-          <div className="flex flex-col gap-3 text-sm">
-            <div>
-              <p className="font-medium">Why / strategy</p>
-              <p className="text-muted-foreground">{strategy.strategy}</p>
-            </div>
-            <div>
-              <p className="font-medium">Channel</p>
-              <p className="text-muted-foreground">{strategy.channel}</p>
-            </div>
-            <div>
-              <p className="font-medium">Key message</p>
-              <p className="text-muted-foreground">{strategy.key_message}</p>
-            </div>
-            <div>
-              <p className="font-medium">Call to action</p>
-              <p className="text-muted-foreground">{strategy.cta}</p>
-            </div>
+          <div className="flex flex-col gap-3">
+            <ExpandableBox>
+              <div className="flex flex-col gap-3 text-sm">
+                <div>
+                  <p className="font-medium">Why / strategy</p>
+                  <p className="text-muted-foreground">{strategy.strategy}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Channel</p>
+                  <p className="text-muted-foreground">{strategy.channel}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Key message</p>
+                  <p className="text-muted-foreground">{strategy.key_message}</p>
+                </div>
+                <div>
+                  <p className="font-medium">Call to action</p>
+                  <p className="text-muted-foreground">{strategy.cta}</p>
+                </div>
+              </div>
+            </ExpandableBox>
             {strategy.status === "draft" ? (
               <form
                 action={approveStrategyAction.bind(
@@ -634,18 +653,20 @@ export default async function ProspectDetailPage({
         ) : drafts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No draft messages yet.</p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {drafts.map((m) => (
-              <OutboundMessageCard
-                key={m.id}
-                message={m}
-                businessId={businessId}
-                productId={productId}
-                prospectId={prospect.id}
-                hasContactEmail={hasContactEmail}
-              />
-            ))}
-          </ul>
+          <ExpandableBox>
+            <ul className="flex flex-col gap-3">
+              {drafts.map((m) => (
+                <OutboundMessageCard
+                  key={m.id}
+                  message={m}
+                  businessId={businessId}
+                  productId={productId}
+                  prospectId={prospect.id}
+                  hasContactEmail={hasContactEmail}
+                />
+              ))}
+            </ul>
+          </ExpandableBox>
         )}
       </section>
 
@@ -657,84 +678,117 @@ export default async function ProspectDetailPage({
           </p>
         ) : (
           <div className="flex flex-col gap-4">
-            {conversations.map((c) => (
-              <div key={c.id} className="flex flex-col gap-3 rounded-md border p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize">{c.channel} thread</span>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">
-                      {CONVERSATION_STATUS_LABEL[c.status] ?? c.status}
+            {conversations.map((c) => {
+              const ChannelIcon = CHANNEL_ICON[c.channel];
+              return (
+                <div key={c.id} className="flex flex-col gap-3 rounded-md border bg-muted/20 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-sm font-medium capitalize">
+                      <ChannelIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+                      {c.channel} thread
                     </span>
-                    {c.status !== "closed" ? (
-                      <form
-                        action={closeConversationAction.bind(
-                          null,
-                          businessId,
-                          productId,
-                          prospect.id,
-                          c.id,
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs font-medium",
+                          c.status === "replied"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
-                        <SubmitButton size="sm" variant="ghost" pendingText="Closing...">
-                          Close
-                        </SubmitButton>
-                      </form>
-                    ) : null}
+                        {CONVERSATION_STATUS_LABEL[c.status] ?? c.status}
+                      </span>
+                      {c.status !== "closed" ? (
+                        <form
+                          action={closeConversationAction.bind(
+                            null,
+                            businessId,
+                            productId,
+                            prospect.id,
+                            c.id,
+                          )}
+                        >
+                          <SubmitButton size="sm" variant="ghost" pendingText="Closing...">
+                            Close
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
 
-                <ul className="flex flex-col gap-2">
-                  {threadForConversation(c.id).map((m) =>
-                    m.direction === "inbound" ? (
-                      <li
-                        key={m.id}
-                        className="flex flex-col gap-1 rounded-md bg-muted/50 p-3 text-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium uppercase text-muted-foreground">
-                            Inbound
-                          </span>
-                          {m.classification ? (
-                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                              {CLASSIFICATION_LABEL[m.classification] ?? m.classification}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p className="whitespace-pre-wrap">{m.content}</p>
-                        {m.recommended_action ? (
-                          <p className="text-xs text-muted-foreground">
-                            Suggested next step: {m.recommended_action}
-                          </p>
-                        ) : null}
-                      </li>
-                    ) : (
-                      <OutboundMessageCard
-                        key={m.id}
-                        message={m}
-                        businessId={businessId}
-                        productId={productId}
-                        prospectId={prospect.id}
-                        hasContactEmail={hasContactEmail}
+                  <ExpandableBox>
+                    <ul className="flex flex-col gap-2">
+                      {threadForConversation(c.id).map((m) =>
+                        m.direction === "inbound" ? (
+                          <li
+                            key={m.id}
+                            className="mr-auto flex max-w-[85%] flex-col gap-1 rounded-md bg-muted p-3 text-sm"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs font-medium uppercase text-muted-foreground">
+                                Inbound
+                              </span>
+                              {m.classification ? (
+                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                  {CLASSIFICATION_LABEL[m.classification] ?? m.classification}
+                                </span>
+                              ) : null}
+                            </div>
+                            <p className="whitespace-pre-wrap">{m.content}</p>
+                            {m.recommended_action ? (
+                              <p className="text-xs text-muted-foreground">
+                                Suggested next step: {m.recommended_action}
+                              </p>
+                            ) : null}
+                          </li>
+                        ) : (
+                          <OutboundMessageCard
+                            key={m.id}
+                            message={m}
+                            businessId={businessId}
+                            productId={productId}
+                            prospectId={prospect.id}
+                            hasContactEmail={hasContactEmail}
+                            className="ml-auto max-w-[85%] bg-background"
+                          />
+                        ),
+                      )}
+                    </ul>
+                  </ExpandableBox>
+
+                  {c.status !== "closed" ? (
+                    <AiActionForm
+                      action={logInboundReplyAction.bind(null, businessId, productId, prospect.id, c.id)}
+                      buttonLabel="Log reply"
+                      pendingText="Saving..."
+                      formClassName="flex flex-col gap-2"
+                      wrapperClassName="flex flex-col gap-2"
+                    >
+                      <Textarea
+                        name="content"
+                        rows={2}
+                        placeholder="Paste or type what the prospect said back..."
+                        required
                       />
-                    ),
-                  )}
-                </ul>
+                    </AiActionForm>
+                  ) : null}
 
-                {c.status === "replied" ? (
-                  <AiActionForm
-                    action={generateReplyAction.bind(
-                      null,
-                      businessId,
-                      productId,
-                      prospect.id,
-                      c.id,
-                    )}
-                    buttonLabel="Generate reply"
-                    pendingText="Generating..."
-                  />
-                ) : null}
-              </div>
-            ))}
+                  {c.status === "replied" ? (
+                    <AiActionForm
+                      action={generateReplyAction.bind(
+                        null,
+                        businessId,
+                        productId,
+                        prospect.id,
+                        c.id,
+                      )}
+                      buttonLabel="Generate reply"
+                      pendingText="Generating..."
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
