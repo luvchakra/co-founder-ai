@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 /** Real, working destinations only. Product links jump to sections already on this page;
  * Company/Legal pages (About, Contact, Blog, Privacy, Terms, Security) don't exist yet --
@@ -27,8 +28,14 @@ export function Footer() {
     <footer className="border-t border-landing-surface-border px-6 py-16">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 sm:grid-cols-4">
         <div className="col-span-2 sm:col-span-1">
-          <Link href="/" className="text-lg font-semibold tracking-tight text-landing-fg">
-            CoFounder<span className="text-landing-accent">AI</span>
+          <Link href="/" aria-label="CoFounderAI" className="inline-block">
+            <Image
+              src="/logo-lockup.png"
+              alt="CoFounderAI"
+              width={1583}
+              height={350}
+              className="h-7 w-auto"
+            />
           </Link>
         </div>
         {COLUMNS.map((column) => (

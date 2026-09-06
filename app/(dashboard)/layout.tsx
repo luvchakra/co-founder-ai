@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccount, listBusinesses, listProducts } from "@/lib/tenancy/queries";
@@ -42,9 +43,16 @@ export default async function DashboardLayout({
             <Link
               href="/dashboard"
               aria-label="co-founder-ai"
-              className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground transition-transform duration-100 active:scale-95"
+              className="flex shrink-0 items-center transition-transform duration-100 active:scale-95"
             >
-              C
+              <Image
+                src="/logo-mark.png"
+                alt=""
+                width={442}
+                height={350}
+                priority
+                className="h-8 w-auto"
+              />
             </Link>
             {account ? (
               <BusinessSelector
