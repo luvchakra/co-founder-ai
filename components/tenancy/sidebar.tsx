@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronRight, LayoutDashboard, Settings, X } from "lucide-react";
+import { ChevronRight, LayoutDashboard, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
 import { useSidebar } from "./sidebar-context";
+import { SidebarAccountMenu } from "./sidebar-account-menu";
 import type { Business, Product } from "@/lib/tenancy/types";
 
 /**
@@ -19,11 +20,19 @@ export function Sidebar({
   businesses,
   productsByBusiness,
   creditsUsedPercent,
+  accountName,
+  accountEmail,
+  accountAvatarUrl,
+  signOutAction,
 }: {
   businesses: Business[];
   productsByBusiness: Record<string, Product[]>;
   /** % of AI credits used this month, blended across every workspace on the account. */
   creditsUsedPercent: number;
+  accountName: string | null;
+  accountEmail: string;
+  accountAvatarUrl: string | null;
+  signOutAction: () => Promise<void>;
 }) {
   const { open, setOpen } = useSidebar();
   const pathname = usePathname();
@@ -180,17 +189,13 @@ export function Sidebar({
             </div>
           </Link>
 
-          <Link
-            href="/dashboard/settings/ai-provider"
-            onClick={() => setOpen(false)}
-            className={cn(
-              "flex items-center gap-2.5 border-t px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-foreground",
-              pathname === "/dashboard/settings/ai-provider" && "bg-accent font-medium text-foreground",
-            )}
-          >
-            <Settings className="size-4 shrink-0" aria-hidden="true" />
-            Settings
-          </Link>
+          <SidebarAccountMenu
+            name={accountName}
+            email={accountEmail}
+            avatarUrl={accountAvatarUrl}
+            signOutAction={signOutAction}
+            onNavigate={() => setOpen(false)}
+          />
         </div>
       </nav>
     </>
