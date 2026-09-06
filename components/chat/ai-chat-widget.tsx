@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
 import {
+  getChatHistoryAction,
   getChatStarterQuestionsAction,
   sendChatMessageAction,
 } from "@/app/(dashboard)/chat-actions";
@@ -17,19 +18,22 @@ import { ChatMarkdown } from "./chat-markdown";
 /**
  * Header AI assistant: a message-icon trigger that opens a slide-over chat panel, same
  * dismiss pattern (outside click / Escape) as the sidebar and account menus. Grounded in
- * whichever business/product the URL currently points at (lib/tenancy/active-path.ts),
- * so answers and starter questions reflect that pipeline's actual state. History is
- * ephemeral -- kept in this component's state only, never persisted.
+ * whichever business/product the URL currently points at (lib/tenancy/active-path.ts).
+ * History is persisted per product (lib/chat/queries.ts, keyed by the product's
+ * workspace) -- switching to a different product's pages loads that product's own saved
+ * conversation instead of carrying over whatever was in view before.
  */
 export function AiChatWidget() {
   const pathname = usePathname();
   const context = getActiveIdsFromPath(pathname);
+  const threadKey = context.productId ?? context.businessId ?? "__account__";
 
   const [open, setOpen] = useState(false);
   const [showBackToChat, setShowBackToChat] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [followUp, setFollowUp] = useState<string | null>(null);
   const [starterQuestions, setStarterQuestions] = useState<string[]>([]);
+  const [loadedThreadKey, setLoadedThreadKey] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,18 +41,32 @@ export function AiChatWidget() {
   useDismiss(panelRef, open, () => setOpen(false));
 
   useEffect(() => {
-    if (!open || messages.length > 0) return;
+    if (!open || loadedThreadKey === threadKey) return;
     let cancelled = false;
-    getChatStarterQuestionsAction(context).then((questions) => {
-      if (!cancelled) setStarterQuestions(questions);
-    });
+    Promise.all([getChatHistoryAction(context), getChatStarterQuestionsAction(context)]).then(
+      ([history, questions]) => {
+        if (cancelled) return;
+        setLoadedThreadKey(threadKey);
+        setError(null);
+        if (history.messages.length > 0) {
+          setMessages(history.messages);
+          setFollowUp(history.followUp);
+          setStarterQuestions([]);
+        } else {
+          setMessages([]);
+          setFollowUp(null);
+          setStarterQuestions(questions);
+        }
+      },
+    );
     return () => {
       cancelled = true;
     };
-    // Only re-fetch when the panel opens fresh with no history yet -- re-running this on
-    // every pathname change while a conversation is already underway would be jarring.
+    // Fetches once per product/business the panel is opened against (threadKey), and
+    // again if the founder navigates to a different one while the panel stays open --
+    // not on every pathname change within the same product.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, threadKey]);
 
   async function send(text: string) {
     if (!text.trim() || pending) return;

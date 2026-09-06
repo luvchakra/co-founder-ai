@@ -10,12 +10,13 @@ export type Alert = {
 };
 
 /**
- * Derived, non-persisted notifications -- no `alerts` table, no read/unread state,
- * nothing to migrate. Every alert is recomputed from data the app already has each time
- * the header renders (see app/(dashboard)/layout.tsx), so it's always current for free
- * and there's nothing to keep in sync. Deliberately excludes ICP status: that would need
- * one more query per workspace, and profile/usage/next-action already cover the cases
- * that actually need a founder's attention.
+ * Derived, non-persisted notifications -- no `alerts` table, nothing to migrate. Every
+ * alert is recomputed from data the app already has each time the header renders (see
+ * app/(dashboard)/layout.tsx), so it's always current for free and there's nothing to
+ * keep in sync. Deliberately excludes ICP status: that would need one more query per
+ * workspace, and profile/usage/next-action already cover the cases that actually need a
+ * founder's attention. Read/unread (components/alerts/alert-bell.tsx) is tracked
+ * separately, client-side only, keyed by each alert's stable `id` below.
  */
 export function deriveAccountAlerts(input: {
   entries: AccountWorkspaceEntry[];
