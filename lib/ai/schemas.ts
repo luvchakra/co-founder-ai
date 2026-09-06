@@ -160,3 +160,26 @@ export const DiscoveredProspectsSchema = z.object({
 });
 
 export type DiscoveredProspect = z.infer<typeof DiscoveredProspectSchema>;
+
+/**
+ * Structured header-chat assistant output (see lib/ai/chat.ts). `followUp` is rendered
+ * as a clickable suggestion that prefills the input box -- the founder still has to hit
+ * Send, so it's just a starting point, not an auto-continued conversation.
+ */
+export const ChatResponseSchema = z.object({
+  answer: z
+    .string()
+    .describe(
+      "Answer to the founder's question, in markdown-lite: **bold** for key terms, " +
+        "[text](url) for links (internal portal paths or external sources). Concise -- " +
+        "a few sentences, not an essay.",
+    ),
+  followUp: z
+    .string()
+    .describe(
+      "One natural follow-up question the founder might ask next, given this context " +
+        "and conversation so far. A short, complete question.",
+    ),
+});
+
+export type ChatResponse = z.infer<typeof ChatResponseSchema>;

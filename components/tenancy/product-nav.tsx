@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NOTCH = 14;
+const NOTCH = 12;
 
-type StageId = "overview" | "icp" | "prospects" | "conversions" | "usage";
+type StageId = "overview" | "icp" | "prospects" | "conversions";
 
 /** Chevron-shaped tab: a point on the right (unless last) and a matching notch cut into
  * the left (unless first), so consecutive tabs interlock into one continuous arrow strip
@@ -29,8 +29,10 @@ export function ProductNav({
   basePath: string;
   /** Real workflow progress (profile generated, ICP exists, prospects added) -- shown as
    * a checkmark on any non-current stage that's already been reached, distinct from
-   * "isActive" (which tab you're currently viewing). Conversions and Usage have no
-   * completion concept, so they're omitted here and stay neutral unless active. */
+   * "isActive" (which tab you're currently viewing). Conversions has no completion
+   * concept, so it's omitted here and stays neutral unless it's the current tab. Usage
+   * lives next to the product name (see the product layout), not as a tab here -- as a
+   * fifth tab it stretched this strip too wide. */
   completed?: Partial<Record<StageId, boolean>>;
 }) {
   const pathname = usePathname();
@@ -39,7 +41,6 @@ export function ProductNav({
     { id: "icp", href: `${basePath}/icp`, label: "ICP" },
     { id: "prospects", href: `${basePath}/prospects`, label: "Prospects" },
     { id: "conversions", href: `${basePath}/conversions`, label: "Conversions" },
-    { id: "usage", href: `${basePath}/usage`, label: "Usage" },
   ];
 
   const activeIndex = tabs.findIndex((tab) =>
@@ -60,8 +61,8 @@ export function ProductNav({
             aria-current={isActive ? "page" : undefined}
             style={{ clipPath: clipPathFor(i, tabs.length), marginLeft: i === 0 ? 0 : -NOTCH }}
             className={cn(
-              "flex h-9 shrink-0 items-center justify-center gap-1.5 pr-5 pl-6 font-medium whitespace-nowrap transition-colors",
-              i === 0 && "pl-5",
+              "flex h-8 shrink-0 items-center justify-center gap-1.5 pr-4 pl-5 font-medium whitespace-nowrap transition-colors",
+              i === 0 && "pl-4",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : isCompleted

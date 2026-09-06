@@ -49,7 +49,7 @@ export function AddProspectModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-prospect-title"
-        className={`relative w-full max-w-lg rounded-2xl border bg-popover p-6 shadow-2xl transition-[transform,opacity] duration-100 ${
+        className={`relative w-full max-w-md rounded-2xl border bg-popover p-6 shadow-2xl transition-[transform,opacity] duration-100 ${
           mounted ? "translate-y-0 scale-100 opacity-100" : "translate-y-2 scale-95 opacity-0"
         }`}
       >

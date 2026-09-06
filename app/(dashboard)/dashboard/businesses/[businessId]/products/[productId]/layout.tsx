@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { getBusiness, getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { getIcpProfile } from "@/lib/icp/queries";
 import { getProspectCounts } from "@/lib/prospects/queries";
@@ -47,11 +49,21 @@ export default async function ProductLayout({
         <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Product
         </span>
-        <EditableName
-          name={product.name}
-          action={renameProductAction.bind(null, businessId, productId)}
-          headingClassName="text-xl font-semibold"
-        />
+        <div className="flex items-center gap-2">
+          <EditableName
+            name={product.name}
+            action={renameProductAction.bind(null, businessId, productId)}
+            headingClassName="text-xl font-semibold"
+          />
+          <Link
+            href={`${basePath}/usage`}
+            aria-label="AI usage"
+            title="AI usage"
+            className="text-muted-foreground transition-colors hover:text-primary"
+          >
+            <Sparkles className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
         {product.description ? (
           <ExpandableText text={product.description} className="text-sm text-muted-foreground" />
         ) : null}
