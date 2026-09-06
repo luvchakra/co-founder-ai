@@ -130,6 +130,44 @@ export function deriveProspectPipelineState(
   return { stage, nextAction, lastActivityAt, isStuck };
 }
 
+export type ConversionFunnelStep = { stage: ProspectStage; label: string; reached: number };
+
+export type ConversionFunnel = {
+  total: number;
+  steps: ConversionFunnelStep[];
+  replyRate: number;
+  closeRate: number;
+};
+
+/**
+ * A conversion funnel from any set of prospects' derived stages -- no new query, since
+ * `deriveProspectPipelineState`'s reverse-order checks already make `.stage` mean
+ * "furthest stage reached", so "reached this stage or further" is a plain index
+ * comparison against PROSPECT_STAGES. Shared by the per-product Conversions tab and the
+ * account-wide dashboard summary so both compute the same numbers the same way.
+ */
+export function computeConversionFunnel(
+  prospects: { stage: ProspectStage }[],
+): ConversionFunnel {
+  const total = prospects.length;
+  const steps = PROSPECT_STAGES.map((stage, i) => ({
+    stage,
+    label: PROSPECT_STAGE_LABEL[stage],
+    reached: prospects.filter((p) => PROSPECT_STAGES.indexOf(p.stage) >= i).length,
+  }));
+
+  const sentCount = steps.find((s) => s.stage === "sent")?.reached ?? 0;
+  const repliedCount = steps.find((s) => s.stage === "replied")?.reached ?? 0;
+  const closedCount = steps.find((s) => s.stage === "closed")?.reached ?? 0;
+
+  return {
+    total,
+    steps,
+    replyRate: sentCount > 0 ? Math.round((repliedCount / sentCount) * 100) : 0,
+    closeRate: total > 0 ? Math.round((closedCount / total) * 100) : 0,
+  };
+}
+
 /** Latest timestamp across a set of ISO strings, ignoring nulls/undefined. */
 export function latestTimestamp(...timestamps: Array<string | null | undefined>): string {
   return timestamps

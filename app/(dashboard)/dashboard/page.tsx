@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   getCurrentAccount,
@@ -5,12 +6,16 @@ import {
   listBusinesses,
   listProducts,
 } from "@/lib/tenancy/queries";
-import type { Product, Workspace } from "@/lib/tenancy/types";
-import { getProspectCounts } from "@/lib/prospects/queries";
+import type { Business, Product, Workspace } from "@/lib/tenancy/types";
+import { getProspectCounts, listProspects } from "@/lib/prospects/queries";
+import { computeConversionFunnel } from "@/lib/prospects/pipeline";
 import { getWorkspaceUsage } from "@/lib/usage/queries";
 import { creditsUsedPercent } from "@/lib/usage/format";
 import { FREE_TIER_MONTHLY_COST_LIMIT_USD } from "@/lib/usage/limits";
-import { BusinessList } from "@/components/tenancy/business-list";
+import { ConversionFunnelPanel } from "@/components/prospects/conversion-funnel-panel";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 
 function KpiCard({
   label,
@@ -32,23 +37,37 @@ function KpiCard({
   );
 }
 
-export default async function DashboardPage() {
+type WorkspaceEntry = { workspace: Workspace; product: Product; business: Business };
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ business?: string; product?: string }>;
+}) {
   const account = await getCurrentAccount();
   if (!account) redirect("/login");
+
+  const { business: businessFilter, product: productFilter } = await searchParams;
 
   const businesses = await listBusinesses(account.id);
   const productLists = await Promise.all(
     businesses.map((business) => listProducts(business.id)),
   );
-  const productsByBusiness: Record<string, Product[]> = {};
-  businesses.forEach((business, i) => {
-    productsByBusiness[business.id] = productLists[i];
-  });
-
   const allProducts = productLists.flat();
-  const workspaces = (
-    await Promise.all(allProducts.map((product) => getWorkspaceForProduct(product.id)))
-  ).filter((w): w is Workspace => w !== null);
+
+  const businessById = new Map(businesses.map((b) => [b.id, b]));
+  const workspaceEntries = (
+    await Promise.all(
+      allProducts.map(async (product): Promise<WorkspaceEntry | null> => {
+        const workspace = await getWorkspaceForProduct(product.id);
+        const business = businessById.get(product.business_id);
+        if (!workspace || !business) return null;
+        return { workspace, product, business };
+      }),
+    )
+  ).filter((entry): entry is WorkspaceEntry => entry !== null);
+
+  const workspaces = workspaceEntries.map((e) => e.workspace);
 
   const [prospectCountsByWorkspace, usageByWorkspace] = await Promise.all([
     Promise.all(workspaces.map((w) => getProspectCounts(w.id))),
@@ -68,6 +87,23 @@ export default async function DashboardPage() {
     (sum, u) => ({ runs: sum.runs + u.totalRuns, cost: sum.cost + u.totalCost }),
     { runs: 0, cost: 0 },
   );
+
+  // Slice-and-dice: a product filter is the most specific slice, then business, then
+  // every workspace on the account. No new query shape -- just which workspaces'
+  // already-computed prospect lists get merged into one funnel.
+  const slicedEntries = productFilter
+    ? workspaceEntries.filter((e) => e.product.id === productFilter)
+    : businessFilter
+      ? workspaceEntries.filter((e) => e.business.id === businessFilter)
+      : workspaceEntries;
+  const slicedProspectLists = await Promise.all(
+    slicedEntries.map((e) => listProspects(e.workspace.id)),
+  );
+  const funnel = computeConversionFunnel(slicedProspectLists.flat());
+
+  const productsForFilter = businessFilter
+    ? workspaceEntries.filter((e) => e.business.id === businessFilter)
+    : workspaceEntries;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 p-8">
@@ -93,17 +129,50 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section>
-        <h2 className="text-xl font-semibold">Your businesses</h2>
-        {businesses.length === 0 ? (
-          <p className="mt-2 text-muted-foreground">
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Conversions</h2>
+          <form method="get" className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="business">Business</Label>
+              <Select id="business" name="business" defaultValue={businessFilter ?? ""}>
+                <option value="">All businesses</option>
+                {businesses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="product">Product</Label>
+              <Select id="product" name="product" defaultValue={productFilter ?? ""}>
+                <option value="">All products</option>
+                {productsForFilter.map((e) => (
+                  <option key={e.product.id} value={e.product.id}>
+                    {e.product.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button type="submit" size="sm" variant="outline">
+              Apply
+            </Button>
+            {businessFilter || productFilter ? (
+              <Button asChild size="sm" variant="ghost">
+                <Link href="/dashboard">Clear</Link>
+              </Button>
+            ) : null}
+          </form>
+        </div>
+
+        {workspaceEntries.length === 0 ? (
+          <p className="text-muted-foreground">
             Use the business selector in the header to create your first business and
             start building a GTM workspace for a product.
           </p>
         ) : (
-          <div className="mt-4">
-            <BusinessList businesses={businesses} productsByBusiness={productsByBusiness} />
-          </div>
+          <ConversionFunnelPanel funnel={funnel} />
         )}
       </section>
     </main>

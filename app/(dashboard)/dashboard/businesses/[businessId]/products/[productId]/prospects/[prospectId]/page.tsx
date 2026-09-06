@@ -12,6 +12,7 @@ import { listConversations } from "@/lib/conversations/queries";
 import {
   deriveProspectPipelineState,
   latestTimestamp,
+  NEXT_ACTION_ANCHOR,
   PROSPECT_STAGE_LABEL,
 } from "@/lib/prospects/pipeline";
 import type { Message } from "@/lib/messages/types";
@@ -302,9 +303,13 @@ export default async function ProspectDetailPage({
           <p className="text-xs font-medium uppercase text-muted-foreground">
             {PROSPECT_STAGE_LABEL[stage]}
           </p>
-          <p className="font-medium">
-            {nextAction ? `Next: ${nextAction}` : "No action needed right now"}
-          </p>
+          {nextAction ? (
+            <a href={`#${NEXT_ACTION_ANCHOR[nextAction] ?? ""}`} className="font-medium hover:underline">
+              Next: {nextAction}
+            </a>
+          ) : (
+            <p className="font-medium">No action needed right now</p>
+          )}
         </div>
       </div>
 

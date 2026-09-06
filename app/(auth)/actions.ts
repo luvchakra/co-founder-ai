@@ -71,6 +71,52 @@ export async function signup(
   redirect("/onboarding");
 }
 
+export async function requestPasswordReset(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) {
+    return { error: "Email is required." };
+  }
+
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=/reset-password`,
+  });
+  // Supabase intentionally doesn't say whether the email is registered (avoids leaking
+  // which emails have an account) -- an error here means the *request itself* failed
+  // (rate limit, malformed email), not "no account found", so it's safe to surface.
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect("/forgot-password/check-email");
+}
+
+export async function updatePassword(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect("/dashboard");
+}
+
 /** Optional OAuth (landing-page-requirements.md's auth sections) -- works once Google is
  * enabled as a provider in the Supabase project's Auth settings; until then Supabase
  * itself returns a clean "provider not enabled" error rather than this failing silently. */

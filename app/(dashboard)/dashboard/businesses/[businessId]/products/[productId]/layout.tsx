@@ -16,10 +16,10 @@ export default async function ProductLayout({
   params: Promise<{ businessId: string; productId: string }>;
 }) {
   const { businessId, productId } = await params;
-  const product = await getProduct(productId);
+  // Independent lookups (neither depends on the other's result) -- fetched in parallel
+  // rather than as two sequential round trips, same pattern as the dashboard layout.
+  const [product, business] = await Promise.all([getProduct(productId), getBusiness(businessId)]);
   if (!product || product.business_id !== businessId) notFound();
-
-  const business = await getBusiness(businessId);
   if (!business) notFound();
 
   const workspace = await getWorkspaceForProduct(product.id);

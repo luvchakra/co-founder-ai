@@ -42,7 +42,7 @@ export function AuthForm({
             <Label htmlFor="password">Password</Label>
             {isLogin ? (
               <Link
-                href="#"
+                href="/forgot-password"
                 className="text-xs text-muted-foreground underline underline-offset-4"
               >
                 Forgot password?
