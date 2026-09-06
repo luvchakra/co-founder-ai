@@ -3,6 +3,7 @@ import {
   getBusiness,
   getCurrentAccount,
   getFirstWorkspaceForAccount,
+  getFirstWorkspaceForBusiness,
   getProduct,
   getWorkspaceForProduct,
   listBusinesses,
@@ -33,9 +34,12 @@ export type ChatReply = { answer: string; followUp: string | null };
 export type ChatPageContext = { businessId: string | null; productId: string | null };
 
 type ResolvedChatContext = {
-  /** Workspace to attribute the ai_runs cost-ledger entry/usage-limit check to. Falls
-   * back to the account's first workspace when the page context has none (e.g. the
-   * founder is on /dashboard with no business/product selected). */
+  /** Workspace to attribute the ai_runs cost-ledger entry, usage-limit check, and
+   * persisted chat history to. Set to the current business's own first workspace when
+   * only a business is in view (null there only if that business has no products yet --
+   * see getFirstWorkspaceForBusiness), and null when there's no business/product context
+   * at all (e.g. the founder is on /dashboard). Either null case falls back to the
+   * account's first workspace overall (see sendChatMessage/getChatHistory). */
   workspace: Workspace | null;
   contextText: string;
   starterQuestions: string[];
@@ -81,10 +85,18 @@ function buildStarterQuestions(input: {
  * calling them again here costs nothing extra when the current-context branch below also
  * ends up calling them in the same request.
  */
-async function buildAccountSummary(accountId: string): Promise<string> {
+type AccountSummary = {
+  text: string;
+  /** "name": basePath for every product on the account (capped) -- lets the no-selection
+   * branch of resolveChatContext point at any product's pages, not just whichever one
+   * happens to be in view. */
+  productPortalLines: string[];
+};
+
+async function buildAccountSummary(accountId: string): Promise<AccountSummary> {
   const businesses = await listBusinesses(accountId);
   if (businesses.length === 0) {
-    return "The founder has no businesses set up yet.";
+    return { text: "The founder has no businesses set up yet.", productPortalLines: [] };
   }
 
   const productLists = await Promise.all(businesses.map((b) => listProducts(b.id)));
@@ -99,12 +111,30 @@ async function buildAccountSummary(accountId: string): Promise<string> {
     return `- "${business.name}": products: ${productNames}`;
   });
 
-  return [
-    `Account overview: ${businesses.length} business${businesses.length === 1 ? "" : "es"}, ` +
-      `${allProducts.length} product${allProducts.length === 1 ? "" : "s"} total, ` +
-      `${totalProspects} prospect${totalProspects === 1 ? "" : "s"} across the account.`,
-    ...businessLines,
-  ].join("\n");
+  const productPortalLines = businesses
+    .flatMap((business, i) => productLists[i].map((p) => ({ business, product: p })))
+    .slice(0, 10)
+    .map(({ business, product }) => `"${product.name}": ${productPortalPath(business.id, product.id)}`);
+
+  return {
+    text: [
+      `Account overview: ${businesses.length} business${businesses.length === 1 ? "" : "es"}, ` +
+        `${allProducts.length} product${allProducts.length === 1 ? "" : "s"} total, ` +
+        `${totalProspects} prospect${totalProspects === 1 ? "" : "s"} across the account.`,
+      ...businessLines,
+    ].join("\n"),
+    productPortalLines,
+  };
+}
+
+/** The system prompt (prompts/chat/chat_v1.ts) tells the model a product's other pages
+ * are this base path plus /icp, /prospects, /conversions, or /usage, so every branch
+ * below only needs to supply this one path per product rather than every sub-page link
+ * spelled out -- which is what let the model fall back to a dashboard/business link when
+ * the founder asked for, say, a prospects page for a product that wasn't the one
+ * currently in view: that product's sub-pages simply weren't in the context at all. */
+function productPortalPath(businessId: string, productId: string): string {
+  return `/dashboard/businesses/${businessId}/products/${productId}`;
 }
 
 /**
@@ -137,10 +167,9 @@ async function resolveChatContext(
         const hasIcp = Boolean(icp);
         const totalProspects = prospects.length;
         const needsActionCount = prospects.filter((p) => p.nextAction !== null).length;
-        const basePath = `/dashboard/businesses/${business.id}/products/${product.id}`;
 
         const contextText = [
-          accountSummary,
+          accountSummary.text,
           "",
           `Currently viewing:`,
           `Business: "${business.name}"`,
@@ -149,9 +178,7 @@ async function resolveChatContext(
           `ICP: ${hasIcp ? "defined" : "not defined yet"}`,
           `Prospects: ${totalProspects} total` +
             (totalProspects > 0 ? `, ${needsActionCount} need a next action` : ""),
-          `Portal links you can use: overview ${basePath}, ICP ${basePath}/icp, ` +
-            `prospects ${basePath}/prospects, conversions ${basePath}/conversions, ` +
-            `usage ${basePath}/usage`,
+          `Portal base path: ${productPortalPath(business.id, product.id)}`,
         ].join("\n");
 
         return {
@@ -174,18 +201,26 @@ async function resolveChatContext(
     if (business) {
       const products = await listProducts(business.id);
       const contextText = [
-        accountSummary,
+        accountSummary.text,
         "",
         "Currently viewing:",
         `Business: "${business.name}"`,
+        `Business portal page: /dashboard/businesses/${business.id}`,
         products.length > 0
-          ? `Products under this business: ${products.map((p) => p.name).join(", ")}`
+          ? [
+              "Products under this business (portal base paths):",
+              ...products.map(
+                (p) => `"${p.name}": ${productPortalPath(business.id, p.id)}`,
+              ),
+            ].join("\n")
           : "No products created yet for this business.",
-        `Portal link you can use: /dashboard/businesses/${business.id}`,
       ].join("\n");
 
       return {
-        workspace: null,
+        // This business's own first workspace, not the account-wide fallback -- a chat
+        // opened from this business's page must persist under a workspace that actually
+        // belongs to it, never a different business's.
+        workspace: await getFirstWorkspaceForBusiness(business.id),
         contextText,
         starterQuestions:
           products.length === 0
@@ -203,9 +238,18 @@ async function resolveChatContext(
 
   return {
     workspace: null,
-    contextText: [accountSummary, "", "No specific business or product is currently selected."].join(
-      "\n",
-    ),
+    contextText: [
+      accountSummary.text,
+      "",
+      "No specific business or product is currently selected.",
+      ...(accountSummary.productPortalLines.length > 0
+        ? [
+            "Portal base paths for products across the account, in case the founder asks " +
+              "for a specific one of these by name:",
+            ...accountSummary.productPortalLines,
+          ]
+        : []),
+    ].join("\n"),
     starterQuestions: [
       "How does CoFounderAI help me find customers?",
       "What should I set up first?",

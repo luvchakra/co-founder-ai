@@ -152,11 +152,24 @@ export const getWorkspace = cache(async (
 export async function getFirstWorkspaceForAccount(accountId: string): Promise<Workspace | null> {
   const businesses = await listBusinesses(accountId);
   for (const business of businesses) {
-    const products = await listProducts(business.id);
-    for (const product of products) {
-      const workspace = await getWorkspaceForProduct(product.id);
-      if (workspace) return workspace;
-    }
+    const workspace = await getFirstWorkspaceForBusiness(business.id);
+    if (workspace) return workspace;
+  }
+  return null;
+}
+
+/**
+ * Same idea as getFirstWorkspaceForAccount, one level down: earliest-created product
+ * under a specific business. The header chat assistant needs this for a business-only
+ * page (no product selected yet) -- falling back to getFirstWorkspaceForAccount there
+ * would attribute the conversation to the account's first business's workspace, which
+ * could be a completely different business than the one actually being viewed.
+ */
+export async function getFirstWorkspaceForBusiness(businessId: string): Promise<Workspace | null> {
+  const products = await listProducts(businessId);
+  for (const product of products) {
+    const workspace = await getWorkspaceForProduct(product.id);
+    if (workspace) return workspace;
   }
   return null;
 }

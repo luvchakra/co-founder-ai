@@ -32,10 +32,12 @@ const OPERATION_REGISTRY: Record<AiOperation, AiOperationSpec> = {
   generate_outreach_message: { qualityTier: "balanced", requiresWebSearch: false },
   generate_reply: { qualityTier: "balanced", requiresWebSearch: false },
   classify_reply: { qualityTier: "fast", requiresWebSearch: false },
-  // Balanced, not fast: answers now have to synthesize the founder's actual pipeline
-  // state into a grounded, insightful response plus a sensible follow-up question --
-  // more than the fast tier's classification/extraction-shaped tasks call for.
-  chat: { qualityTier: "balanced", requiresWebSearch: false },
+  // Reasoning, the strongest tier: the founder asked for this directly after the
+  // balanced tier kept mis-following its own context (e.g. linking to a business/
+  // dashboard page instead of the specific product page it was given). Chat is a
+  // synthesis task over real pipeline state plus a growing conversation history --
+  // worth the strongest available model, same call as generate_outreach_strategy.
+  chat: { qualityTier: "reasoning", requiresWebSearch: false },
 };
 
 export function getOperationSpec(operation: AiOperation): AiOperationSpec {
