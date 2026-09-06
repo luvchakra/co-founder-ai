@@ -6,6 +6,7 @@ import {
   addKnowledgeSource,
   addWebsiteKnowledgeSource,
   deleteKnowledgeSource,
+  updateKnowledgeSource,
 } from "@/lib/knowledge/mutations";
 import { updateProduct } from "@/lib/tenancy/mutations";
 import { understandProduct } from "@/lib/ai/understand-product";
@@ -110,6 +111,26 @@ export async function deleteSourceAction(
 ) {
   await deleteKnowledgeSource(sourceId);
   revalidatePath(productPath(businessId, productId));
+}
+
+export async function updateSourceAction(
+  businessId: string,
+  productId: string,
+  sourceId: string,
+  _prevState: RenameActionState,
+  formData: FormData,
+): Promise<RenameActionState> {
+  const content = String(formData.get("value") ?? "");
+
+  try {
+    await updateKnowledgeSource(sourceId, content);
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: error instanceof Error ? error.message : "Something went wrong." };
+  }
+
+  revalidatePath(productPath(businessId, productId));
+  return { success: true };
 }
 
 export async function generateProductProfileAction(

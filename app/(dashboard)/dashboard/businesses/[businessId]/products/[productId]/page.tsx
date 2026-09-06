@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { EditableText } from "@/components/tenancy/editable-text";
+import { CollapsibleSection } from "@/components/ui/collapsible-section";
+import { EditableSourceContent } from "@/components/knowledge/editable-source-content";
 import {
   addManualSourceAction,
   addWebsiteSourceAction,
@@ -14,11 +16,8 @@ import {
   generateProductProfileAction,
   updateProductDescriptionAction,
   updateProductWebsiteAction,
+  updateSourceAction,
 } from "./actions";
-
-function truncate(text: string, max: number) {
-  return text.length > max ? `${text.slice(0, max)}…` : text;
-}
 
 export default async function ProductPage({
   params,
@@ -157,16 +156,17 @@ export default async function ProductPage({
                 key={source.id}
                 className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">
                     {source.source_name}{" "}
                     <span className="font-normal text-muted-foreground">
                       ({source.source_type})
                     </span>
                   </p>
-                  <p className="mt-1 text-muted-foreground">
-                    {truncate(source.content, 200)}
-                  </p>
+                  <EditableSourceContent
+                    content={source.content}
+                    action={updateSourceAction.bind(null, businessId, productId, source.id)}
+                  />
                 </div>
                 <form
                   action={deleteSourceAction.bind(null, businessId, productId, source.id)}
@@ -180,36 +180,36 @@ export default async function ProductPage({
           </ul>
         )}
 
-        <div className="flex flex-col gap-3 rounded-md border p-4">
-          <h3 className="text-sm font-medium">Add a description</h3>
-          <form
-            action={addManualSourceAction.bind(null, businessId, productId, workspace.id)}
-            className="flex flex-col gap-3"
-          >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="content">What does this product do?</Label>
-              <Textarea id="content" name="content" rows={1} required />
-            </div>
-            <SubmitButton size="sm" className="self-start" pendingText="Adding...">
-              Add
-            </SubmitButton>
-          </form>
-        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <CollapsibleSection label="Add a description">
+            <form
+              action={addManualSourceAction.bind(null, businessId, productId, workspace.id)}
+              className="flex flex-col gap-3"
+            >
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="content">What does this product do?</Label>
+                <Textarea id="content" name="content" rows={1} required />
+              </div>
+              <SubmitButton size="sm" className="self-start" pendingText="Adding...">
+                Add
+              </SubmitButton>
+            </form>
+          </CollapsibleSection>
 
-        <div className="flex flex-col gap-3 rounded-md border p-4">
-          <h3 className="text-sm font-medium">Add a website</h3>
-          <form
-            action={addWebsiteSourceAction.bind(null, businessId, productId, workspace.id)}
-            className="flex flex-col gap-3"
-          >
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="url">URL</Label>
-              <Input id="url" name="url" type="text" placeholder="https://" required />
-            </div>
-            <SubmitButton size="sm" className="self-start" pendingText="Fetching...">
-              Fetch and add
-            </SubmitButton>
-          </form>
+          <CollapsibleSection label="Add a website">
+            <form
+              action={addWebsiteSourceAction.bind(null, businessId, productId, workspace.id)}
+              className="flex flex-col gap-3"
+            >
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="url">URL</Label>
+                <Input id="url" name="url" type="text" placeholder="https://" required />
+              </div>
+              <SubmitButton size="sm" className="self-start" pendingText="Fetching...">
+                Fetch and add
+              </SubmitButton>
+            </form>
+          </CollapsibleSection>
         </div>
       </section>
     </div>
