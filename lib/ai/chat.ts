@@ -13,6 +13,7 @@ import type { Workspace } from "@/lib/tenancy/types";
 import { getIcpProfile } from "@/lib/icp/queries";
 import { getProspectCountsForWorkspaces, listProspects } from "@/lib/prospects/queries";
 import { assertWithinUsageLimit } from "@/lib/usage/limits";
+import { appendChatMessage, listChatMessages } from "@/lib/chat/queries";
 import { chatSystemPrompt, CHAT_PROMPT_VERSION } from "@/prompts/chat/chat_v1";
 import { hashInput } from "./hash";
 import { recordAiRun } from "./usage";
@@ -212,7 +213,7 @@ async function resolveChatContext(
   };
 }
 
-/** Starter questions shown when the chat panel opens with no messages yet -- see
+/** Starter questions shown when the chat panel opens with no history yet -- see
  * components/chat/ai-chat-widget.tsx. */
 export async function getChatStarterQuestions(context: ChatPageContext): Promise<string[]> {
   const account = await getCurrentAccount();
@@ -222,12 +223,41 @@ export async function getChatStarterQuestions(context: ChatPageContext): Promise
 }
 
 /**
+ * Resolves the same workspace sendChatMessage would attribute a new turn to, and returns
+ * whatever's already persisted for it (supabase/migrations/20260906070000_chat_messages_schema.sql)
+ * -- the widget loads this once per business/product it's opened against so a founder's
+ * conversation survives a reload or reopening the panel later. `followUp` is only the
+ * most recent assistant turn's, matching what the widget shows below the last message.
+ */
+export async function getChatHistory(
+  context: ChatPageContext,
+): Promise<{ messages: ChatMessage[]; followUp: string | null }> {
+  const account = await getCurrentAccount();
+  if (!account) return { messages: [], followUp: null };
+
+  const resolved = await resolveChatContext(account.id, context);
+  const workspace = resolved.workspace ?? (await getFirstWorkspaceForAccount(account.id));
+  if (!workspace) return { messages: [], followUp: null };
+
+  const history = await listChatMessages(workspace.id);
+  const lastAssistant = [...history].reverse().find((m) => m.role === "assistant");
+  return {
+    messages: history.map(({ role, content }) => ({ role, content })),
+    followUp: lastAssistant?.followUp ?? null,
+  };
+}
+
+/**
  * Header AI assistant (docs item: navbar chat icon) -- grounded in whatever
  * business/product the founder currently has in view. Credential lookup is inherently
  * account-scoped (lib/ai/router.ts); when the page context has no workspace (e.g. the
  * founder is on /dashboard), the account's first workspace is used purely to attribute
- * the ai_runs cost-ledger entry and usage-limit check. History is ephemeral: nothing is
- * persisted, the caller holds the transcript in memory.
+ * the ai_runs cost-ledger entry, usage-limit check, and now the persisted chat history
+ * too, so all three stay consistent about which workspace "this conversation" belongs to.
+ * `messages` is the full transcript the client is holding (including whatever
+ * getChatHistory returned it originally) with exactly one new user turn appended --
+ * only that new turn and the assistant's reply get written here, never the whole array,
+ * or reloading history and sending a reply would double up every prior turn.
  */
 export async function sendChatMessage(
   messages: ChatMessage[],
@@ -248,6 +278,11 @@ export async function sendChatMessage(
   }
 
   await assertWithinUsageLimit(workspace.id);
+
+  const newUserMessage = messages[messages.length - 1];
+  if (newUserMessage?.role === "user") {
+    await appendChatMessage(workspace.id, newUserMessage);
+  }
 
   const trimmed = messages.slice(-MAX_HISTORY_MESSAGES);
   const { accountId, provider, modelId, model } = await resolveAiModel(workspace.id, OPERATION);
@@ -281,7 +316,14 @@ export async function sendChatMessage(
       durationMs: Date.now() - startedAt,
     });
 
-    return { answer: response.object.answer, followUp: response.object.followUp || null };
+    const followUp = response.object.followUp || null;
+    await appendChatMessage(workspace.id, {
+      role: "assistant",
+      content: response.object.answer,
+      followUp,
+    });
+
+    return { answer: response.object.answer, followUp };
   } catch (error) {
     const aiError = toAiProviderError(error, provider);
     await recordAiRun({

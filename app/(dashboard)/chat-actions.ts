@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  getChatHistory,
   getChatStarterQuestions,
   sendChatMessage,
   type ChatMessage,
@@ -33,5 +34,16 @@ export async function getChatStarterQuestionsAction(
   } catch (error) {
     console.error("[chat] getChatStarterQuestionsAction failed:", error);
     return [];
+  }
+}
+
+export async function getChatHistoryAction(
+  context: ChatPageContext,
+): Promise<{ messages: ChatMessage[]; followUp: string | null }> {
+  try {
+    return await getChatHistory(context);
+  } catch (error) {
+    console.error("[chat] getChatHistoryAction failed:", error);
+    return { messages: [], followUp: null };
   }
 }
