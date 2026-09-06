@@ -150,6 +150,27 @@ export async function listProspectIndustries(workspaceId: string): Promise<strin
   return Array.from(values).sort();
 }
 
+export type ProspectCounts = {
+  total: number;
+  new: number;
+  qualified: number;
+  disqualified: number;
+};
+
+/** Cheap status counts for dashboard KPIs -- no pipeline join, just the status column. */
+export async function getProspectCounts(workspaceId: string): Promise<ProspectCounts> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("prospects")
+    .select("status")
+    .eq("workspace_id", workspaceId);
+  if (error) throw error;
+
+  const counts: ProspectCounts = { total: data.length, new: 0, qualified: 0, disqualified: 0 };
+  for (const row of data as { status: ProspectStatus }[]) counts[row.status] += 1;
+  return counts;
+}
+
 export async function listProspectSuggestions(
   workspaceId: string,
 ): Promise<ProspectSuggestion[]> {

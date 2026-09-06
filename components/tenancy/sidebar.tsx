@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, LayoutDashboard, Settings, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getActiveIdsFromPath } from "@/lib/tenancy/active-path";
 import { useSidebar } from "./sidebar-context";
@@ -55,12 +55,12 @@ export function Sidebar({
         aria-hidden="true"
       />
       <nav
-        aria-label="Businesses"
+        aria-label="Main"
         className="fixed top-14 bottom-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto border-r bg-background text-base shadow-2xl"
       >
         <div className="flex items-center justify-between px-3 py-2.5">
           <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Businesses
+            Menu
           </span>
           <button
             type="button"
@@ -78,12 +78,19 @@ export function Sidebar({
           href="/dashboard"
           onClick={() => setOpen(false)}
           className={cn(
-            "px-3 py-2.5 font-medium hover:bg-accent",
+            "flex items-center gap-2.5 px-3 py-2.5 font-medium hover:bg-accent",
             pathname === "/dashboard" && "bg-accent",
           )}
         >
-          All businesses
+          <LayoutDashboard className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          Dashboard
         </Link>
+
+        <div className="px-3 pt-3 pb-1.5">
+          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Businesses
+          </span>
+        </div>
 
         <div className="flex flex-col divide-y border-t">
           {businesses.map((business) => {
@@ -147,6 +154,20 @@ export function Sidebar({
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-auto flex flex-col border-t py-1">
+          <Link
+            href="/dashboard/settings/ai-provider"
+            onClick={() => setOpen(false)}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2.5 text-muted-foreground hover:bg-accent hover:text-foreground",
+              pathname === "/dashboard/settings/ai-provider" && "bg-accent font-medium text-foreground",
+            )}
+          >
+            <Settings className="size-4 shrink-0" aria-hidden="true" />
+            Settings
+          </Link>
         </div>
       </nav>
     </>

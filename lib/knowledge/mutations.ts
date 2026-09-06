@@ -32,6 +32,24 @@ export async function deleteKnowledgeSource(sourceId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateKnowledgeSource(
+  sourceId: string,
+  content: string,
+): Promise<ProductKnowledge> {
+  const trimmed = content.trim();
+  if (!trimmed) throw new Error("Content is required.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_knowledge")
+    .update({ content: trimmed.slice(0, MAX_CONTENT_LENGTH) })
+    .eq("id", sourceId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Fetches a URL and extracts readable text with a lightweight regex-based strip -- no
  * HTML-parsing dependency for MVP. Runs at request time on the server (Vercel), not in
