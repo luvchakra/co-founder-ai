@@ -1,7 +1,11 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { IcpProfile } from "./types";
 
-export async function getIcpProfile(workspaceId: string): Promise<IcpProfile | null> {
+/** cache()-wrapped: the product layout (ProductNav completion checkmark) and the ICP
+ * tab's own page both call this with the same workspaceId in the same request --
+ * without memoizing, that's two Supabase round trips for one navigation. */
+export const getIcpProfile = cache(async (workspaceId: string): Promise<IcpProfile | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("icp_profiles")
@@ -10,4 +14,4 @@ export async function getIcpProfile(workspaceId: string): Promise<IcpProfile | n
     .maybeSingle();
   if (error) throw error;
   return data;
-}
+});
