@@ -1,17 +1,13 @@
 import { notFound } from "next/navigation";
 import { getProduct, getWorkspaceForProduct } from "@/lib/tenancy/queries";
 import { listProductKnowledge } from "@/lib/knowledge/queries";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { AiActionForm } from "@/components/ai/ai-action-form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { EditableText } from "@/components/tenancy/editable-text";
-import { CollapsibleSection } from "@/components/ui/collapsible-section";
-import { EditableSourceContent } from "@/components/knowledge/editable-source-content";
+import { KnowledgeSourceCard } from "@/components/knowledge/knowledge-source-card";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { CollapsibleCard } from "@/components/ui/collapsible-card";
 import {
-  addManualSourceAction,
-  addWebsiteSourceAction,
+  addFileSourceAction,
   deleteSourceAction,
   generateProductProfileAction,
   updateProductDescriptionAction,
@@ -150,67 +146,41 @@ export default async function ProductPage({
         {sources.length === 0 ? (
           <p className="text-sm text-muted-foreground">No sources yet.</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             {sources.map((source) => (
-              <li
+              <KnowledgeSourceCard
                 key={source.id}
-                className="flex items-start justify-between gap-3 rounded-md border p-3 text-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">
-                    {source.source_name}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      ({source.source_type})
-                    </span>
-                  </p>
-                  <EditableSourceContent
-                    content={source.content}
-                    action={updateSourceAction.bind(null, businessId, productId, source.id)}
-                  />
-                </div>
-                <form
-                  action={deleteSourceAction.bind(null, businessId, productId, source.id)}
-                >
-                  <SubmitButton variant="ghost" size="sm" pendingText="Deleting...">
-                    Delete
-                  </SubmitButton>
-                </form>
-              </li>
+                sourceName={source.source_name}
+                sourceType={source.source_type}
+                content={source.content}
+                updateAction={updateSourceAction.bind(null, businessId, productId, source.id)}
+                deleteAction={deleteSourceAction.bind(null, businessId, productId, source.id)}
+              />
             ))}
-          </ul>
+          </div>
         )}
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <CollapsibleSection label="Add a description">
-            <form
-              action={addManualSourceAction.bind(null, businessId, productId, workspace.id)}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="content">What does this product do?</Label>
-                <Textarea id="content" name="content" rows={1} required />
-              </div>
-              <SubmitButton size="sm" className="self-start" pendingText="Adding...">
-                Add
-              </SubmitButton>
-            </form>
-          </CollapsibleSection>
-
-          <CollapsibleSection label="Add a website">
-            <form
-              action={addWebsiteSourceAction.bind(null, businessId, productId, workspace.id)}
-              className="flex flex-col gap-3"
-            >
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="url">URL</Label>
-                <Input id="url" name="url" type="text" placeholder="https://" required />
-              </div>
-              <SubmitButton size="sm" className="self-start" pendingText="Fetching...">
-                Fetch and add
-              </SubmitButton>
-            </form>
-          </CollapsibleSection>
-        </div>
+        <CollapsibleCard label="Add a file">
+          <form
+            action={addFileSourceAction.bind(null, businessId, productId, workspace.id)}
+            className="flex flex-col gap-3"
+          >
+            <input
+              type="file"
+              name="file"
+              required
+              accept=".pdf,.doc,.docx,.txt,.md,image/*"
+              className="text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-accent"
+            />
+            <p className="text-xs text-muted-foreground">
+              PDF and Word documents are read for AI context; images and other files are
+              attached for reference only.
+            </p>
+            <SubmitButton size="sm" className="self-start" pendingText="Uploading...">
+              Upload
+            </SubmitButton>
+          </form>
+        </CollapsibleCard>
       </section>
     </div>
   );

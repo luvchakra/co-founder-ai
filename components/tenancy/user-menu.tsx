@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { LogOut, Settings, User } from "lucide-react";
+import { BarChart3, LogOut, Settings, User } from "lucide-react";
 import { useDismiss } from "@/hooks/use-dismiss";
 import { SubmitButton } from "@/components/ui/submit-button";
 
@@ -20,8 +20,8 @@ function getInitials(name: string | null, email: string): string {
  * Top-right avatar + account dropdown (CoFounderAI Header & Business Selector Enhancement
  * doc §1). "Help" is omitted -- no help center exists in this app yet, and the doc makes
  * it explicitly optional; shipping a link to nowhere would just be the dead-CTA problem
- * the earlier landing-page pass fixed. Settings links to the one settings screen that
- * exists today (AI Provider).
+ * the earlier landing-page pass fixed. Usage is account-wide (every business/product),
+ * which is why it lives here rather than under any one product's tabs.
  */
 export function UserMenu({
   name,
@@ -80,6 +80,16 @@ export function UserMenu({
           >
             <User className="size-4 text-muted-foreground" aria-hidden="true" />
             Profile
+          </Link>
+
+          <Link
+            href="/dashboard/settings/usage"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent"
+          >
+            <BarChart3 className="size-4 text-muted-foreground" aria-hidden="true" />
+            Usage
           </Link>
 
           <Link

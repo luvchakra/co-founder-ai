@@ -3,8 +3,7 @@
 import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
-  addKnowledgeSource,
-  addWebsiteKnowledgeSource,
+  addFileKnowledgeSource,
   deleteKnowledgeSource,
   updateKnowledgeSource,
 } from "@/lib/knowledge/mutations";
@@ -77,30 +76,17 @@ export async function updateProductWebsiteAction(
   return { success: true };
 }
 
-export async function addManualSourceAction(
+export async function addFileSourceAction(
   businessId: string,
   productId: string,
   workspaceId: string,
   formData: FormData,
 ) {
-  const content = String(formData.get("content") ?? "");
-  await addKnowledgeSource(workspaceId, {
-    sourceType: "manual",
-    sourceName: "Founder description",
-    content,
-  });
-  revalidatePath(productPath(businessId, productId));
-}
-
-export async function addWebsiteSourceAction(
-  businessId: string,
-  productId: string,
-  workspaceId: string,
-  formData: FormData,
-) {
-  const url = String(formData.get("url") ?? "").trim();
-  if (!url) throw new Error("URL is required.");
-  await addWebsiteKnowledgeSource(workspaceId, url);
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    throw new Error("Choose a file to upload.");
+  }
+  await addFileKnowledgeSource(workspaceId, file);
   revalidatePath(productPath(businessId, productId));
 }
 
