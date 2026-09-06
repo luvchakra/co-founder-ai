@@ -6,6 +6,7 @@ import { EditableText } from "@/components/tenancy/editable-text";
 import { KnowledgeSourceCard } from "@/components/knowledge/knowledge-source-card";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { CollapsibleCard } from "@/components/ui/collapsible-card";
+import { ExpandableBox } from "@/components/ui/expandable-box";
 import {
   addFileSourceAction,
   deleteSourceAction,
@@ -71,6 +72,7 @@ export default async function ProductPage({
             sources below.
           </p>
         ) : (
+          <ExpandableBox collapsedHeight={240}>
           <dl className="flex flex-col gap-3 text-sm">
             <div>
               <dt className="font-medium">Category</dt>
@@ -137,6 +139,7 @@ export default async function ProductPage({
               </dd>
             </div>
           </dl>
+          </ExpandableBox>
         )}
       </section>
 

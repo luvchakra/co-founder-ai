@@ -18,7 +18,7 @@ export function ProspectToolbarActions({
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center justify-end gap-2">
       <Button asChild variant="outline" size="sm">
         <Link href={importHref}>
           <Upload className="size-4" aria-hidden="true" />
@@ -31,9 +31,9 @@ export function ProspectToolbarActions({
           Discover
         </Link>
       </Button>
-      <Button size="sm" onClick={() => setAddOpen(true)}>
+      <Button size="sm" className="px-2.5" onClick={() => setAddOpen(true)}>
         <Plus className="size-4" aria-hidden="true" />
-        Add prospect
+        Add
       </Button>
 
       {addOpen ? (

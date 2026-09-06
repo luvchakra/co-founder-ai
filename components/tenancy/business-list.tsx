@@ -33,19 +33,26 @@ export function BusinessList({
               type="button"
               onClick={() => setExpandedId((prev) => (prev === business.id ? null : business.id))}
               aria-expanded={isExpanded}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+              className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="truncate font-medium">{business.name}</span>
-                {business.industry ? (
-                  <span className="shrink-0 text-sm text-muted-foreground">
-                    {business.industry}
-                  </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium">{business.name}</span>
+                  {business.industry ? (
+                    <span className="shrink-0 text-sm text-muted-foreground">
+                      {business.industry}
+                    </span>
+                  ) : null}
+                </div>
+                {business.description ? (
+                  <p className="truncate text-sm text-muted-foreground">
+                    {business.description}
+                  </p>
                 ) : null}
               </div>
               <ChevronDown
                 className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                  "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-150",
                   isExpanded && "rotate-180",
                 )}
                 aria-hidden="true"
