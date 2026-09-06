@@ -17,7 +17,7 @@ import {
   deleteMessage,
 } from "@/lib/messages/mutations";
 import { sendMessage } from "@/lib/messages/send";
-import { closeConversation } from "@/lib/conversations/mutations";
+import { closeConversation, logInboundReply } from "@/lib/conversations/mutations";
 import { runAiAction, type AiActionState } from "@/lib/actions/ai-action-state";
 
 function prospectPath(businessId: string, productId: string, prospectId: string) {
@@ -233,4 +233,23 @@ export async function closeConversationAction(
 ) {
   await closeConversation(conversationId);
   revalidatePath(prospectPath(businessId, productId, prospectId));
+}
+
+/** Logs a prospect's reply typed in by hand (docs section: Conversations redesign) --
+ * uses runAiAction/AiActionState like the other AI-invoking actions here because
+ * logInboundReply best-effort-classifies the reply, an AI call that can fail on a usage
+ * limit or provider error. */
+export async function logInboundReplyAction(
+  businessId: string,
+  productId: string,
+  prospectId: string,
+  conversationId: string,
+  _prevState: AiActionState,
+  formData: FormData,
+): Promise<AiActionState> {
+  return runAiAction(async () => {
+    const content = String(formData.get("content") ?? "");
+    await logInboundReply(conversationId, content);
+    revalidatePath(prospectPath(businessId, productId, prospectId));
+  });
 }
